@@ -14,56 +14,9 @@ body {
   min-height: 100vh;
 }
 
-/* Animated mesh — gives the glass something to refract */
+/* Base layer behind Framer floating animation */
 .liquid-glass-scene {
-  background: linear-gradient(155deg, #f0f4ff 0%, #f8fafc 42%, #e8eeff 100%);
-}
-
-.liquid-glass-blob {
-  position: absolute;
-  border-radius: 9999px;
-  filter: blur(64px);
-  opacity: 0.55;
-  animation: liquid-glass-drift 22s ease-in-out infinite;
-}
-
-.liquid-glass-blob-a {
-  top: -8%;
-  left: -6%;
-  width: 42vw;
-  height: 42vw;
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.45), transparent 68%);
-}
-
-.liquid-glass-blob-b {
-  top: 8%;
-  right: -10%;
-  width: 36vw;
-  height: 36vw;
-  background: radial-gradient(circle, rgba(56, 189, 248, 0.4), transparent 70%);
-  animation-delay: -7s;
-}
-
-.liquid-glass-blob-c {
-  bottom: -12%;
-  left: 28%;
-  width: 48vw;
-  height: 48vw;
-  background: radial-gradient(circle, rgba(167, 139, 250, 0.38), transparent 72%);
-  animation-delay: -14s;
-}
-
-@keyframes liquid-glass-drift {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1);
-  }
-  33% {
-    transform: translate(2%, 3%) scale(1.04);
-  }
-  66% {
-    transform: translate(-2%, 1%) scale(0.98);
-  }
+  background: linear-gradient(160deg, #eef2ff 0%, #f8fafc 50%, #e0e7ff 100%);
 }
 
 /* Liquid glass surfaces (web port of @callstack/liquid-glass API) */
