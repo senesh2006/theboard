@@ -50,6 +50,14 @@ export async function Nav() {
                 >
                   Dashboard
                 </Link>
+                {dbUser.role === Role.STUDENT ? (
+                  <Link
+                    href="/student/agent"
+                    className="hidden text-sm font-medium text-slate-700 hover:text-indigo-700 sm:inline"
+                  >
+                    Job Agent
+                  </Link>
+                ) : null}
                 <Link
                   href={
                     dbUser.role === Role.STUDENT

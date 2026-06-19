@@ -50,9 +50,14 @@ export default async function StudentDashboardPage() {
       title={`Hi, ${user.name.split(" ")[0]}`}
       description="Track your applications and browse new opportunities."
       actions={
-        <Link href="/listings">
-          <Button>Browse listings</Button>
-        </Link>
+        <>
+          <Link href="/student/agent">
+            <Button variant="secondary">Job Agent</Button>
+          </Link>
+          <Link href="/listings">
+            <Button>Browse listings</Button>
+          </Link>
+        </>
       }
     >
       <Card className="mb-6">
