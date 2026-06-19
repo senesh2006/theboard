@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import { readJsonResponse } from "@/lib/read-json-response";
 
 export function OnboardingForm() {
   const router = useRouter();
@@ -33,9 +34,15 @@ export function OnboardingForm() {
       body: JSON.stringify({ name, district: district || null, skills, role }),
     });
 
-    const data = await res.json();
+    const data = await readJsonResponse<{ error?: string; redirectTo?: string }>(res);
     if (!res.ok) {
       setError(data.error ?? "Something went wrong");
+      setLoading(false);
+      return;
+    }
+
+    if (!data.redirectTo) {
+      setError("Unexpected server response. Try again.");
       setLoading(false);
       return;
     }
