@@ -1,25 +1,10 @@
-import { Prisma } from "@prisma/client";
 import { Role } from "@prisma/client";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/db";
 import { jsonError, jsonOk } from "@/lib/api-response";
+import { databaseErrorMessage } from "@/lib/db/errors";
 import { ROLE_HOME } from "@/lib/auth/roles";
 import { profileSchema } from "@/lib/validations/profile";
-
-function databaseErrorMessage(error: unknown): string {
-  if (error instanceof Prisma.PrismaClientInitializationError) {
-    return "Database is not configured. Set DATABASE_URL on Vercel and redeploy.";
-  }
-
-  if (error instanceof Prisma.PrismaClientKnownRequestError) {
-    if (error.code === "P2021") {
-      return "Database tables are missing. Run prisma migrate deploy on your database.";
-    }
-  }
-
-  console.error("Onboarding failed:", error);
-  return "Could not save your profile. Check DATABASE_URL and try again.";
-}
 
 export async function POST(request: Request) {
   try {

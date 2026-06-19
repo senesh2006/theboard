@@ -1,11 +1,16 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { getSupabasePublishableKey, getSupabaseUrl } from "@/lib/supabase/config";
+import { tryGetSupabaseConfig } from "@/lib/supabase/config";
 
 export async function createClient() {
+  const config = tryGetSupabaseConfig();
+  if (!config) {
+    throw new Error("Supabase is not configured");
+  }
+
   const cookieStore = await cookies();
 
-  return createServerClient(getSupabaseUrl(), getSupabasePublishableKey(), {
+  return createServerClient(config.url, config.key, {
     cookies: {
       getAll() {
         return cookieStore.getAll();
@@ -21,4 +26,12 @@ export async function createClient() {
       },
     },
   });
+}
+
+export async function tryCreateClient() {
+  try {
+    return await createClient();
+  } catch {
+    return null;
+  }
 }

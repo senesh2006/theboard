@@ -1,19 +1,22 @@
-import { prisma } from "@/lib/db";
-import { createClient } from "@/lib/supabase/server";
 import { Role, User } from "@prisma/client";
+import { tryCreateClient } from "@/lib/supabase/server";
+import { prisma } from "@/lib/db";
+import { withDatabase } from "@/lib/db/errors";
 
 export type SessionUser = Pick<User, "id" | "role" | "name" | "email" | "district" | "skills">;
 
 export async function getSessionUser(): Promise<SessionUser | null> {
-  const supabase = await createClient();
+  const supabase = await tryCreateClient();
+  if (!supabase) return null;
+
   const {
     data: { user: authUser },
   } = await supabase.auth.getUser();
 
   if (!authUser) return null;
 
-  try {
-    const dbUser = await prisma.user.findUnique({
+  const result = await withDatabase(() =>
+    prisma.user.findUnique({
       where: { id: authUser.id },
       select: {
         id: true,
@@ -23,13 +26,22 @@ export async function getSessionUser(): Promise<SessionUser | null> {
         district: true,
         skills: true,
       },
-    });
+    }),
+  );
 
-    return dbUser;
-  } catch (error) {
-    console.error("Database unavailable while loading session user:", error);
-    return null;
-  }
+  if ("error" in result) return null;
+  return result.data;
+}
+
+export async function getAuthUser() {
+  const supabase = await tryCreateClient();
+  if (!supabase) return null;
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  return user;
 }
 
 export async function requireSessionUser(allowedRoles?: Role[]): Promise<SessionUser> {

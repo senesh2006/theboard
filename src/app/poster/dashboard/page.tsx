@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Role } from "@prisma/client";
 import { getSessionUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
+import { withDatabase } from "@/lib/db/errors";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -13,13 +14,27 @@ export default async function PosterDashboardPage() {
   if (!user) redirect("/login");
   if (user.role !== Role.POSTER) redirect("/");
 
-  const listings = await prisma.listing.findMany({
-    where: { posterId: user.id },
-    orderBy: { createdAt: "desc" },
-    include: {
-      _count: { select: { applications: true } },
-    },
-  });
+  const listingsResult = await withDatabase(() =>
+    prisma.listing.findMany({
+      where: { posterId: user.id },
+      orderBy: { createdAt: "desc" },
+      include: {
+        _count: { select: { applications: true } },
+      },
+    }),
+  );
+
+  if ("error" in listingsResult) {
+    return (
+      <PageShell title="Poster dashboard">
+        <Card>
+          <p className="text-sm text-red-600">{listingsResult.error}</p>
+        </Card>
+      </PageShell>
+    );
+  }
+
+  const listings = listingsResult.data;
 
   return (
     <PageShell

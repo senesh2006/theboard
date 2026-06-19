@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Role } from "@prisma/client";
 import { getSessionUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
+import { withDatabase } from "@/lib/db/errors";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -13,22 +14,36 @@ export default async function StudentDashboardPage() {
   if (!user) redirect("/login");
   if (user.role !== Role.STUDENT) redirect("/");
 
-  const applications = await prisma.application.findMany({
-    where: { studentId: user.id },
-    orderBy: { updatedAt: "desc" },
-    include: {
-      listing: {
-        select: {
-          id: true,
-          title: true,
-          district: true,
-          isRemote: true,
-          isPartTime: true,
-          status: true,
+  const applicationsResult = await withDatabase(() =>
+    prisma.application.findMany({
+      where: { studentId: user.id },
+      orderBy: { updatedAt: "desc" },
+      include: {
+        listing: {
+          select: {
+            id: true,
+            title: true,
+            district: true,
+            isRemote: true,
+            isPartTime: true,
+            status: true,
+          },
         },
       },
-    },
-  });
+    }),
+  );
+
+  if ("error" in applicationsResult) {
+    return (
+      <PageShell title={`Hi, ${user.name.split(" ")[0]}`}>
+        <Card>
+          <p className="text-sm text-red-600">{applicationsResult.error}</p>
+        </Card>
+      </PageShell>
+    );
+  }
+
+  const applications = applicationsResult.data;
 
   return (
     <PageShell

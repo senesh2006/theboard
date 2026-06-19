@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Role } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { withDatabase } from "@/lib/db/errors";
 import { getSessionUser } from "@/lib/auth/session";
 import { PageShell } from "@/components/layout/page-shell";
 import { Badge } from "@/components/ui/badge";
@@ -16,34 +17,54 @@ type ListingDetailPageProps = {
 export default async function ListingDetailPage({ params }: ListingDetailPageProps) {
   const user = await getSessionUser();
 
-  const listing = await prisma.listing.findUnique({
-    where: { id: params.id },
-    include: {
-      poster: { select: { name: true, district: true } },
-    },
+  const listingResult = await withDatabase(async () => {
+    const listing = await prisma.listing.findUnique({
+      where: { id: params.id },
+      include: {
+        poster: { select: { name: true, district: true } },
+      },
+    });
+
+    if (!listing || listing.status === "FLAGGED") {
+      return { notFound: true as const };
+    }
+
+    let existingApplication = null;
+    if (user?.role === Role.STUDENT) {
+      existingApplication = await prisma.application.findUnique({
+        where: {
+          listingId_studentId: {
+            listingId: listing.id,
+            studentId: user.id,
+          },
+        },
+        select: { status: true },
+      });
+    }
+
+    await prisma.listing.update({
+      where: { id: listing.id },
+      data: { viewCount: { increment: 1 } },
+    });
+
+    return { listing, existingApplication };
   });
 
-  if (!listing || listing.status === "FLAGGED") {
+  if ("error" in listingResult) {
+    return (
+      <PageShell title="Listing">
+        <Card>
+          <p className="text-sm text-red-600">{listingResult.error}</p>
+        </Card>
+      </PageShell>
+    );
+  }
+
+  if ("notFound" in listingResult.data) {
     notFound();
   }
 
-  let existingApplication = null;
-  if (user?.role === Role.STUDENT) {
-    existingApplication = await prisma.application.findUnique({
-      where: {
-        listingId_studentId: {
-          listingId: listing.id,
-          studentId: user.id,
-        },
-      },
-      select: { status: true },
-    });
-  }
-
-  await prisma.listing.update({
-    where: { id: listing.id },
-    data: { viewCount: { increment: 1 } },
-  });
+  const { listing, existingApplication } = listingResult.data;
 
   const isStudent = user?.role === Role.STUDENT;
   const isOwner = user?.id === listing.posterId;

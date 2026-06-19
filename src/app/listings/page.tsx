@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { withDatabase } from "@/lib/db/errors";
 import { buildListingWhere } from "@/lib/listings/queries";
 import { listingBrowseFiltersSchema } from "@/lib/validations/listing";
 import { ListingFilters } from "@/components/listings/listing-filters";
@@ -28,18 +29,36 @@ export default async function ListingsPage({ searchParams }: ListingsPageProps) 
   const { page, pageSize, ...filterFields } = filters;
   const where = buildListingWhere(filterFields);
 
-  const [listings, total] = await Promise.all([
-    prisma.listing.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-      include: {
-        poster: { select: { name: true } },
-      },
-    }),
-    prisma.listing.count({ where }),
-  ]);
+  const listingsResult = await withDatabase(async () => {
+    const [listings, total] = await Promise.all([
+      prisma.listing.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: {
+          poster: { select: { name: true } },
+        },
+      }),
+      prisma.listing.count({ where }),
+    ]);
+    return { listings, total };
+  });
+
+  if ("error" in listingsResult) {
+    return (
+      <PageShell
+        title="Browse opportunities"
+        description="Internships and gigs from across the board — filter by what matters to you."
+      >
+        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">
+          {listingsResult.error}
+        </div>
+      </PageShell>
+    );
+  }
+
+  const { listings, total } = listingsResult.data;
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
