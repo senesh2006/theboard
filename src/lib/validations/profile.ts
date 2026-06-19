@@ -10,6 +10,10 @@ export const profileSchema = z.object({
 
 export type ProfileInput = z.infer<typeof profileSchema>;
 
-export const profileUpdateSchema = profileSchema.omit({ role: true });
+export const profileUpdateSchema = profileSchema.omit({ role: true }).extend({
+  cvSummary: z.string().max(8000).optional().nullable(),
+  cvEducation: z.string().max(8000).optional().nullable(),
+  cvExperience: z.string().max(8000).optional().nullable(),
+});
 
 export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;

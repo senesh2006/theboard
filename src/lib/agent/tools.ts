@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import { generateJobApplicationAdvice } from "@/lib/agent/advice";
+import { formatCvDocument, cvHasContent } from "@/lib/cv/build-cv";
 import { buildListingWhere } from "@/lib/listings/queries";
 import type {
   AgentListingSummary,
@@ -96,6 +98,36 @@ export const AGENT_TOOLS: NimToolDefinition[] = [
             description: "Max results (default 5, max 10)",
           },
         },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_student_cv",
+      description:
+        "Get the student's saved CV text built from profile summary, education, and experience.",
+      parameters: {
+        type: "object",
+        properties: {},
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_application_advice",
+      description:
+        "Compare the student's CV to a specific job listing and return tailored application advice.",
+      parameters: {
+        type: "object",
+        properties: {
+          listingId: {
+            type: "string",
+            description: "The listing ID to analyze against the CV",
+          },
+        },
+        required: ["listingId"],
       },
     },
   },
@@ -264,6 +296,128 @@ export async function executeAgentTool(
       });
     }
 
+    case "get_student_cv": {
+      const profile = await prisma.user.findUnique({
+        where: { id: ctx.user.id },
+        select: {
+          name: true,
+          email: true,
+          district: true,
+          skills: true,
+          cvSummary: true,
+          cvEducation: true,
+          cvExperience: true,
+        },
+      });
+
+      if (!profile) {
+        return JSON.stringify({ error: "Profile not found" });
+      }
+
+      const cv = {
+        cvSummary: profile.cvSummary,
+        cvEducation: profile.cvEducation,
+        cvExperience: profile.cvExperience,
+      };
+
+      ctx.steps.push({
+        tool: name,
+        summary: cvHasContent(cv) ? "Loaded student CV" : "CV is empty",
+      });
+
+      return JSON.stringify({
+        hasCv: cvHasContent(cv),
+        cvText: formatCvDocument(profile, cv),
+        profilePath: "/student/profile",
+      });
+    }
+
+    case "get_application_advice": {
+      const listingId = String(args.listingId ?? "");
+      const profile = await prisma.user.findUnique({
+        where: { id: ctx.user.id },
+        select: {
+          name: true,
+          email: true,
+          district: true,
+          skills: true,
+          cvSummary: true,
+          cvEducation: true,
+          cvExperience: true,
+        },
+      });
+
+      if (!profile) {
+        return JSON.stringify({ error: "Profile not found" });
+      }
+
+      const cv = {
+        cvSummary: profile.cvSummary,
+        cvEducation: profile.cvEducation,
+        cvExperience: profile.cvExperience,
+      };
+
+      if (!cvHasContent(cv)) {
+        ctx.steps.push({ tool: name, summary: "CV missing" });
+        return JSON.stringify({
+          error: "CV is empty. Ask the student to add their CV at /student/profile.",
+          profilePath: "/student/profile",
+        });
+      }
+
+      const listing = await prisma.listing.findUnique({
+        where: { id: listingId },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          district: true,
+          isRemote: true,
+          isPartTime: true,
+          skillsRequired: true,
+          status: true,
+        },
+      });
+
+      if (!listing || listing.status !== "ACTIVE") {
+        ctx.steps.push({ tool: name, summary: "Listing not found" });
+        return JSON.stringify({ error: "Listing not found or not active" });
+      }
+
+      const summary = toListingSummary(listing);
+      if (!ctx.listings.some((item) => item.id === summary.id)) {
+        ctx.listings.push(summary);
+      }
+
+      try {
+        const advice = await generateJobApplicationAdvice({
+          profile,
+          cv,
+          listing,
+        });
+
+        ctx.steps.push({
+          tool: name,
+          summary: `Generated advice for "${listing.title}"`,
+        });
+
+        ctx.navigation.push({
+          path: `/listings/${listing.id}`,
+          label: "View job",
+        });
+
+        return JSON.stringify({
+          listingId: listing.id,
+          listingTitle: listing.title,
+          advice,
+        });
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Advice generation failed";
+        return JSON.stringify({ error: message });
+      }
+    }
+
     case "get_my_applications": {
       const applications = await prisma.application.findMany({
         where: { studentId: ctx.user.id },
@@ -401,19 +555,20 @@ export async function executeAgentTool(
 
 export const AGENT_SYSTEM_PROMPT = `You are TheBoard Job Finder, an AI assistant that helps students discover internships and part-time jobs on TheBoard app.
 
-You can search listings, match jobs to the student's profile, check their applications, and guide them to relevant pages inside the app.
+You can search listings, match jobs to the student's profile, read their CV, generate application advice for a specific job, check their applications, and guide them to relevant pages inside the app.
 
 App routes you can navigate students to:
 - /listings — browse all jobs (supports query params: q, district, remote=true, partTime=true)
 - /listings/{id} — view a specific job and apply
 - /student/dashboard — see application status
-- /student/profile — update district and skills
-- /student/agent — this chat
+- /student/profile — update profile, build CV, use "Add profile to CV"
+- /student/agent — this chat (select a job + Get application advice in the sidebar)
 
 Guidelines:
-- Start by understanding what the student wants: location, remote preference, skills, or application status.
+- Start by understanding what the student wants: location, remote preference, skills, application status, or CV advice for a job.
 - Use tools before giving specific job recommendations. Do not invent listing IDs or titles.
+- For CV or application advice, call get_student_cv first if needed, then get_application_advice with a real listing ID from search results.
 - When you find good matches, call navigate_to so the student can open the page.
 - Keep responses concise and friendly. Summarize top picks with brief reasons.
-- If the student's profile is missing skills or district, suggest updating their profile and offer to navigate there.
+- If the student's CV is empty, tell them to open /student/profile and click "Add profile to CV".
 - You cannot submit applications on their behalf; tell them to open the listing and click Apply.`;

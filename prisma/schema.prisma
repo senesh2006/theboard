@@ -40,6 +40,9 @@ model User {
   email     String   @unique
   district  String?
   skills    String[] @default([])
+  cvSummary    String?
+  cvEducation  String?
+  cvExperience String?
   createdAt DateTime @default(now())
 
   listingsPosted Listing[]     @relation("PosterListings")

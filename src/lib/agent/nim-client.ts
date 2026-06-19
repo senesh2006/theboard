@@ -63,3 +63,45 @@ export async function createNimChatCompletion(
 
   return choice.message;
 }
+
+export async function createNimCompletion(
+  system: string,
+  user: string,
+  options?: { maxTokens?: number },
+): Promise<string> {
+  const { apiKey, baseUrl, model } = getNimConfig();
+
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      temperature: 0.4,
+      max_tokens: options?.maxTokens ?? 1024,
+      stream: false,
+    }),
+  });
+
+  const data = (await response.json()) as NimChatCompletionResponse;
+
+  if (!response.ok) {
+    const message =
+      data.error?.message ??
+      `NVIDIA NIM request failed with status ${response.status}`;
+    throw new Error(message);
+  }
+
+  const content = data.choices[0]?.message?.content?.trim();
+  if (!content) {
+    throw new Error("NVIDIA NIM returned an empty response");
+  }
+
+  return content;
+}

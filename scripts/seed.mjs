@@ -171,6 +171,12 @@ async function seedDemoStudent() {
       role: Role.STUDENT,
       district: "Colombo",
       skills: ["React", "TypeScript", "Python", "UI Design"],
+      cvSummary:
+        "Jordan Smith based in Colombo. Final-year CS student seeking frontend internships and part-time dev gigs. Strong in React, TypeScript, and UI design.",
+      cvEducation:
+        "BSc Computer Science — University of Colombo (expected 2026)\nRelevant coursework: Web development, databases, algorithms",
+      cvExperience:
+        "Personal projects — Built a student marketplace UI with React and Next.js\nVolunteer — Tutored juniors on HTML/CSS basics",
     },
   });
 }

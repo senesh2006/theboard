@@ -6,12 +6,21 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { readJsonResponse } from "@/lib/read-json-response";
 import type {
   AgentListingSummary,
   AgentNavigation,
   AgentStep,
 } from "@/lib/agent/types";
+
+type JobOption = {
+  id: string;
+  title: string;
+  district: string | null;
+  isRemote: boolean;
+  isPartTime: boolean;
+};
 
 type ChatMessage = {
   role: "user" | "assistant";
@@ -21,6 +30,10 @@ type ChatMessage = {
   steps?: AgentStep[];
 };
 
+type JobFinderAgentProps = {
+  listings: JobOption[];
+};
+
 const STARTER_PROMPTS = [
   "Find remote part-time jobs for me",
   "What jobs match my skills?",
@@ -28,19 +41,32 @@ const STARTER_PROMPTS = [
   "Search for internships in my district",
 ];
 
-export function JobFinderAgent() {
+export function JobFinderAgent({ listings }: JobFinderAgentProps) {
   const router = useRouter();
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "assistant",
       content:
-        "Hi! I'm your job finder assistant. Tell me what you're looking for — remote work, part-time gigs, skills you want to use — and I'll search TheBoard and guide you to the right pages.",
+        "Hi! I can search jobs, read your CV, and give tailored advice when you pick a listing. Build your CV on your profile, select a job on the right, then click Get application advice.",
     },
   ]);
   const [input, setInput] = useState("");
+  const [selectedListingId, setSelectedListingId] = useState(listings[0]?.id ?? "");
   const [loading, setLoading] = useState(false);
+  const [adviceLoading, setAdviceLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
+
+  const selectedListing = listings.find((listing) => listing.id === selectedListingId);
+
+  function scrollToBottom() {
+    requestAnimationFrame(() => {
+      listRef.current?.scrollTo({
+        top: listRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+    });
+  }
 
   async function sendMessage(text: string) {
     const trimmed = text.trim();
@@ -89,17 +115,86 @@ export function JobFinderAgent() {
           steps: data.steps,
         },
       ]);
-
-      requestAnimationFrame(() => {
-        listRef.current?.scrollTo({
-          top: listRef.current.scrollHeight,
-          behavior: "smooth",
-        });
-      });
+      scrollToBottom();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleApplicationAdvice() {
+    if (!selectedListingId || adviceLoading || loading) return;
+
+    const listing = selectedListing;
+    if (!listing) {
+      setError("Select a job listing first.");
+      return;
+    }
+
+    setError(null);
+    setAdviceLoading(true);
+
+    const userMessage = `Give me application advice for: ${listing.title}`;
+    const nextMessages: ChatMessage[] = [
+      ...messages,
+      { role: "user", content: userMessage },
+    ];
+    setMessages(nextMessages);
+    scrollToBottom();
+
+    try {
+      const res = await fetch("/api/agent/advice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ listingId: selectedListingId }),
+      });
+
+      const data = await readJsonResponse<{
+        advice?: string;
+        listing?: { id: string; title: string };
+        error?: string;
+      }>(res);
+
+      if (!res.ok) {
+        throw new Error(data.error ?? "Could not generate advice");
+      }
+
+      setMessages([
+        ...nextMessages,
+        {
+          role: "assistant",
+          content: data.advice ?? "No advice generated.",
+          listings: data.listing ?
+            [
+              {
+                id: data.listing.id,
+                title: data.listing.title,
+                district: listing.district,
+                isRemote: listing.isRemote,
+                isPartTime: listing.isPartTime,
+                skillsRequired: [],
+                excerpt: "Selected job for CV review",
+              },
+            ]
+          : undefined,
+          navigation: [
+            {
+              path: `/listings/${selectedListingId}`,
+              label: "View job & apply",
+            },
+            {
+              path: "/student/profile",
+              label: "Edit CV",
+            },
+          ],
+        },
+      ]);
+      scrollToBottom();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setAdviceLoading(false);
     }
   }
 
@@ -165,7 +260,9 @@ export function JobFinderAgent() {
                             <Badge variant="muted">{listing.district}</Badge>
                           ) : null}
                         </div>
-                        <p className="mt-1 text-xs text-slate-600">{listing.excerpt}</p>
+                        {listing.excerpt ? (
+                          <p className="mt-1 text-xs text-slate-600">{listing.excerpt}</p>
+                        ) : null}
                       </div>
                     ))}
                   </div>
@@ -189,19 +286,19 @@ export function JobFinderAgent() {
             </div>
           ))}
 
-          {loading ? (
+          {loading || adviceLoading ? (
             <div className="flex justify-start">
               <div className="rounded-2xl rounded-bl-md bg-slate-100 px-4 py-3 text-sm text-slate-500">
-                Searching listings and navigating the app…
+                {adviceLoading ?
+                  "Reading your CV and analyzing the job…"
+                : "Searching listings and navigating the app…"}
               </div>
             </div>
           ) : null}
         </div>
 
         <div className="border-t border-slate-200 p-4">
-          {error ? (
-            <p className="mb-2 text-sm text-red-600">{error}</p>
-          ) : null}
+          {error ? <p className="mb-2 text-sm text-red-600">{error}</p> : null}
           <form
             onSubmit={(event) => {
               event.preventDefault();
@@ -213,35 +310,83 @@ export function JobFinderAgent() {
               value={input}
               onChange={(event) => setInput(event.target.value)}
               placeholder="Ask me to find jobs, check applications, or open a page…"
-              disabled={loading}
+              disabled={loading || adviceLoading}
               className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 disabled:opacity-50"
             />
-            <Button type="submit" disabled={loading || !input.trim()}>
+            <Button type="submit" disabled={loading || adviceLoading || !input.trim()}>
               Send
             </Button>
           </form>
         </div>
       </Card>
 
-      <Card className="w-full shrink-0 p-4 lg:w-72">
-        <h2 className="text-sm font-semibold text-slate-900">Try asking</h2>
-        <ul className="mt-3 space-y-2">
-          {STARTER_PROMPTS.map((prompt) => (
-            <li key={prompt}>
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => void sendMessage(prompt)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:border-indigo-300 hover:bg-indigo-50 disabled:opacity-50"
-              >
-                {prompt}
-              </button>
-            </li>
-          ))}
-        </ul>
-        <p className="mt-4 text-xs text-slate-500">
-          Powered by NVIDIA NIM. The agent searches live listings and can open
-          pages inside TheBoard for you.
+      <Card className="w-full shrink-0 space-y-6 p-4 lg:w-80">
+        <div>
+          <h2 className="text-sm font-semibold text-slate-900">CV application advice</h2>
+          <p className="mt-1 text-xs text-slate-500">
+            Select a job. The agent reads your saved CV and suggests how to improve your
+            application.
+          </p>
+
+          <div className="mt-3 space-y-2">
+            <Label htmlFor="listing-select">Job listing</Label>
+            <select
+              id="listing-select"
+              value={selectedListingId}
+              onChange={(event) => setSelectedListingId(event.target.value)}
+              disabled={listings.length === 0 || adviceLoading || loading}
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 disabled:opacity-50"
+            >
+              {listings.length === 0 ? (
+                <option value="">No active listings</option>
+              ) : (
+                listings.map((listing) => (
+                  <option key={listing.id} value={listing.id}>
+                    {listing.title}
+                    {listing.district ? ` · ${listing.district}` : ""}
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
+
+          <Button
+            type="button"
+            className="mt-3 w-full"
+            disabled={!selectedListingId || adviceLoading || loading}
+            onClick={() => void handleApplicationAdvice()}
+          >
+            {adviceLoading ? "Analyzing CV…" : "Get application advice"}
+          </Button>
+
+          <Link
+            href="/student/profile"
+            className="mt-2 block text-center text-xs font-medium text-indigo-600 hover:underline"
+          >
+            Edit CV on your profile
+          </Link>
+        </div>
+
+        <div>
+          <h2 className="text-sm font-semibold text-slate-900">Try asking</h2>
+          <ul className="mt-3 space-y-2">
+            {STARTER_PROMPTS.map((prompt) => (
+              <li key={prompt}>
+                <button
+                  type="button"
+                  disabled={loading || adviceLoading}
+                  onClick={() => void sendMessage(prompt)}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:border-indigo-300 hover:bg-indigo-50 disabled:opacity-50"
+                >
+                  {prompt}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <p className="text-xs text-slate-500">
+          Powered by NVIDIA NIM. Advice uses your profile CV and the selected listing.
         </p>
       </Card>
     </div>

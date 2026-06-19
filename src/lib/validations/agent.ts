@@ -13,3 +13,7 @@ export const agentChatSchema = z.object({
 });
 
 export type AgentChatInput = z.infer<typeof agentChatSchema>;
+
+export const agentAdviceSchema = z.object({
+  listingId: z.string().min(1, "Select a job listing"),
+});
