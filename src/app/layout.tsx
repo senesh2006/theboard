@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { Nav } from "@/components/layout/nav";
+import { LiquidGlassBackground } from "@/components/layout/liquid-glass-background";
+import { StudentFloatingAgent } from "@/components/agent/student-floating-agent";
 import "./globals.css";
 
 const geistSans = localFont({
@@ -22,8 +24,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} min-h-screen font-sans antialiased`}>
+        <LiquidGlassBackground />
         <Nav />
         <main>{children}</main>
+        <StudentFloatingAgent />
       </body>
     </html>
   );

@@ -1,14 +1,22 @@
 import { cn } from "@/lib/utils";
+import { LiquidGlassView } from "@/components/ui/liquid-glass";
 
-type CardProps = React.HTMLAttributes<HTMLDivElement>;
+type CardProps = React.HTMLAttributes<HTMLDivElement> & {
+  glass?: "regular" | "clear" | "none";
+  interactive?: boolean;
+};
 
-export function Card({ className, ...props }: CardProps) {
+export function Card({
+  className,
+  glass = "regular",
+  interactive = false,
+  ...props
+}: CardProps) {
   return (
-    <div
-      className={cn(
-        "rounded-xl border border-slate-200 bg-white p-5 shadow-sm",
-        className,
-      )}
+    <LiquidGlassView
+      effect={glass}
+      interactive={interactive}
+      className={cn("rounded-xl p-5", className)}
       {...props}
     />
   );

@@ -5,6 +5,7 @@ import { ROLE_HOME } from "@/lib/auth/roles";
 import { tryCreateClient } from "@/lib/supabase/server";
 import { clearDemoSession } from "@/lib/auth/demo-session";
 import { redirect } from "next/navigation";
+import { LiquidGlassView } from "@/components/ui/liquid-glass";
 
 async function signOut() {
   "use server";
@@ -22,8 +23,12 @@ export async function Nav() {
     const dbUser = await getSessionUser();
 
     return (
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4">
+      <header className="sticky top-0 z-40">
+        <LiquidGlassView
+          effect="regular"
+          className="border-b border-white/40 shadow-sm"
+        >
+          <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4">
           <Link href="/" className="text-lg font-semibold text-indigo-700">
             TheBoard
           </Link>
@@ -116,20 +121,23 @@ export async function Nav() {
             )}
           </nav>
         </div>
+        </LiquidGlassView>
       </header>
     );
   } catch (error) {
     console.error("Nav render failed:", error);
     return (
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
-          <Link href="/" className="text-lg font-semibold text-indigo-700">
-            TheBoard
-          </Link>
-          <Link href="/listings" className="text-sm text-slate-700">
-            Browse
-          </Link>
-        </div>
+      <header className="sticky top-0 z-40">
+        <LiquidGlassView effect="regular" className="border-b border-white/40">
+          <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
+            <Link href="/" className="text-lg font-semibold text-indigo-700">
+              TheBoard
+            </Link>
+            <Link href="/listings" className="text-sm text-slate-700">
+              Browse
+            </Link>
+          </div>
+        </LiquidGlassView>
       </header>
     );
   }
