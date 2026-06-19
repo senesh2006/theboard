@@ -195,6 +195,20 @@ function validateDatabaseUrl(name, value) {
     return { ok: false, message: `${name} must end with /postgres` };
   }
 
+  if (/^db\.[^.]+\.supabase\.co$/i.test(parsed.hostname)) {
+    return {
+      ok: false,
+      message: `${name} uses Supabase direct host (${parsed.hostname}). Vercel cannot reach it (P1001). Use the Session pooler URL from Supabase Connect instead.`,
+    };
+  }
+
+  if (parsed.hostname.includes("pooler.supabase.com") && parsed.username === "postgres") {
+    return {
+      ok: false,
+      message: `${name} pooler username must be postgres.mpuboebxkugbobspodwd, not postgres.`,
+    };
+  }
+
   return { ok: true, trimmed, port, hostname: parsed.hostname, username: parsed.username };
 }
 
@@ -232,11 +246,15 @@ function syncDatabaseSchema(migrationUrl) {
     console.log("✓ prisma db push succeeded");
   } catch (error) {
     console.error("\n❌ Could not sync database schema.\n");
-    console.error("P1000 usually means wrong password or wrong username format.");
-    console.error("- Pooler URL: user must be postgres.mpuboebxkugbobspodwd (not just postgres)");
-    console.error("- Direct URL: user is postgres @ db.mpuboebxkugbobspodwd.supabase.co");
-    console.error("- Reset password in Supabase → Settings → Database, update Vercel DATABASE_URL");
-    console.error("- Remove old POSTGRES_PRISMA_URL / POSTGRES_URL env vars if present");
+    console.error("P1001 = Vercel cannot reach db.*.supabase.co — use Session pooler URL.");
+    console.error("P1000 = wrong password or username.");
+    console.error("");
+    console.error("Use this DATABASE_URL on Vercel (Session pooler, port 5432):");
+    console.error(
+      "postgresql://postgres.mpuboebxkugbobspodwd:YOUR_PASSWORD@aws-1-ap-southeast-2.pooler.supabase.com:5432/postgres",
+    );
+    console.error("");
+    console.error("Copy from Supabase → Connect → Session pooler. Do NOT use db.*.supabase.co on Vercel.");
     throw error;
   }
 }
@@ -255,13 +273,11 @@ if (!check.ok) {
   console.error(`\n❌ ${check.message}\n`);
   console.error(`In Vercel → Settings → Environment Variables, set DATABASE_URL for Production.
 
-Option A — Session pooler (recommended on Vercel):
+Use Supabase → Connect → Session pooler (NOT direct connection):
+
 postgresql://postgres.mpuboebxkugbobspodwd:YOUR_PASSWORD@aws-1-ap-southeast-2.pooler.supabase.com:5432/postgres
 
-Option B — Direct connection:
-postgresql://postgres:YOUR_PASSWORD@db.mpuboebxkugbobspodwd.supabase.co:5432/postgres
-
-Copy the exact string from Supabase → Connect. Paste ONLY the URL (no quotes).
+Direct db.*.supabase.co URLs do not work on Vercel (P1001). Paste ONLY the URL (no quotes).
 `);
   process.exit(1);
 }
