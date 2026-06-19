@@ -19,6 +19,9 @@ export default function HomePage() {
             <Link href="/listings">
               <Button>Browse listings</Button>
             </Link>
+            <Link href="/login">
+              <Button variant="secondary">Try demo</Button>
+            </Link>
             <Link href="/signup">
               <Button variant="secondary">Sign up</Button>
             </Link>

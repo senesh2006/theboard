@@ -2,22 +2,14 @@ import { Role, User } from "@prisma/client";
 import { tryCreateClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/db";
 import { withDatabase } from "@/lib/db/errors";
+import { getDemoUserIdFromCookies } from "@/lib/auth/demo-session";
 
 export type SessionUser = Pick<User, "id" | "role" | "name" | "email" | "district" | "skills">;
 
-export async function getSessionUser(): Promise<SessionUser | null> {
-  const supabase = await tryCreateClient();
-  if (!supabase) return null;
-
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
-
-  if (!authUser) return null;
-
+async function loadSessionUser(userId: string): Promise<SessionUser | null> {
   const result = await withDatabase(() =>
     prisma.user.findUnique({
-      where: { id: authUser.id },
+      where: { id: userId },
       select: {
         id: true,
         role: true,
@@ -33,7 +25,36 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   return result.data;
 }
 
+export async function getSessionUser(): Promise<SessionUser | null> {
+  const demoUserId = await getDemoUserIdFromCookies();
+  if (demoUserId) {
+    return loadSessionUser(demoUserId);
+  }
+
+  const supabase = await tryCreateClient();
+  if (!supabase) return null;
+
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+
+  if (!authUser) return null;
+
+  return loadSessionUser(authUser.id);
+}
+
 export async function getAuthUser() {
+  const demoUserId = await getDemoUserIdFromCookies();
+  if (demoUserId) {
+    const user = await loadSessionUser(demoUserId);
+    if (!user) return null;
+    return {
+      id: user.id,
+      email: user.email,
+      user_metadata: { role: user.role, name: user.name },
+    };
+  }
+
   const supabase = await tryCreateClient();
   if (!supabase) return null;
 

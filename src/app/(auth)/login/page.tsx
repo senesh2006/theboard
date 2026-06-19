@@ -22,7 +22,11 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
       ? "Auth is not configured. Check Supabase env vars on Vercel."
       : searchParams.error === "auth"
         ? "Sign-in failed. Try again or use email/password."
-        : null;
+        : searchParams.error === "demo"
+          ? "Demo login is disabled. Set ENABLE_DEMO_BYPASS=true on Vercel."
+          : searchParams.error === "demo-data"
+            ? "Demo data missing. Set SEED_DEMO_DATA=true on Vercel or run npm run db:seed."
+            : null;
 
   return (
     <PageShell

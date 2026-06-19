@@ -7,6 +7,11 @@ import { createClient } from "@/lib/supabase/server";
 import { getAuthCallbackUrl } from "@/lib/supabase/app-url";
 import { prisma } from "@/lib/db";
 import { ROLE_HOME } from "@/lib/auth/roles";
+import {
+  DEMO_STUDENT_ID,
+  isDemoBypassEnabled,
+  setDemoSession,
+} from "@/lib/auth/demo-session";
 
 export type AuthActionState = {
   error?: string;
@@ -121,4 +126,23 @@ export async function signupAction(
 
   revalidatePath("/", "layout");
   redirect("/onboarding");
+}
+
+export async function demoLoginAction(): Promise<void> {
+  if (!isDemoBypassEnabled()) {
+    redirect("/login?error=demo");
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: DEMO_STUDENT_ID },
+    select: { id: true, role: true },
+  });
+
+  if (!user) {
+    redirect("/login?error=demo-data");
+  }
+
+  await setDemoSession(user.id);
+  revalidatePath("/", "layout");
+  redirect(ROLE_HOME[user.role]);
 }

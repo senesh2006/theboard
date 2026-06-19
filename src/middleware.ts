@@ -1,6 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 import { ROLE_HOME, roleCanAccessPath } from "@/lib/auth/roles";
+import {
+  DEMO_COOKIE,
+  getDemoRole,
+  getDemoUserIdFromCookieValue,
+  isDemoBypassEnabled,
+} from "@/lib/auth/demo-session";
 import { Role } from "@prisma/client";
 
 const AUTH_ROUTES = ["/login", "/signup"];
@@ -25,14 +31,23 @@ function getUserRole(user: { user_metadata?: Record<string, unknown> }): Role | 
 export async function middleware(request: NextRequest) {
   const { supabaseResponse, user } = await updateSession(request);
   const { pathname } = request.nextUrl;
-  const role = user ? getUserRole(user) : null;
+
+  const demoUserId =
+    isDemoBypassEnabled() ?
+      getDemoUserIdFromCookieValue(request.cookies.get(DEMO_COOKIE)?.value)
+    : null;
+  const isAuthenticated = Boolean(user || demoUserId);
+  const role =
+    user ? getUserRole(user)
+    : demoUserId ? getDemoRole(demoUserId)
+    : null;
 
   if (pathname.startsWith("/api/")) {
     return supabaseResponse;
   }
 
   if (pathname.startsWith("/onboarding")) {
-    if (!user) {
+    if (!isAuthenticated) {
       const url = request.nextUrl.clone();
       url.pathname = "/login";
       url.searchParams.set("next", pathname);
@@ -46,7 +61,7 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
-  if (user && AUTH_ROUTES.some((route) => pathname.startsWith(route))) {
+  if (isAuthenticated && AUTH_ROUTES.some((route) => pathname.startsWith(route))) {
     const url = request.nextUrl.clone();
     url.pathname = role ? ROLE_HOME[role] : "/onboarding";
     return NextResponse.redirect(url);
@@ -56,7 +71,7 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
-  if (!user) {
+  if (!isAuthenticated) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", pathname);

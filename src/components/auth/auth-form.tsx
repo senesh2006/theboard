@@ -5,6 +5,7 @@ import { useFormState, useFormStatus } from "react-dom";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import {
+  demoLoginAction,
   loginAction,
   signupAction,
   type AuthActionState,
@@ -75,19 +76,19 @@ export function AuthForm({ mode, next = "/", bannerError }: AuthFormProps) {
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
         {message ? <p className="text-sm text-emerald-700">{message}</p> : null}
 
-        {mode === "login" ? (
-          <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-            Demo student: <span className="font-medium">demo@theboard.app</span> /{" "}
-            <span className="font-medium">Demo1234!</span> (run{" "}
-            <code className="rounded bg-white px-1">npm run db:seed</code> once to create)
-          </p>
-        ) : null}
-
         <SubmitButton
           label={mode === "login" ? "Log in" : "Create account"}
           loadingLabel="Please wait…"
         />
       </form>
+
+      {mode === "login" ? (
+        <form action={demoLoginAction} className="mt-3">
+          <Button type="submit" variant="secondary" className="w-full">
+            Try demo student (no email)
+          </Button>
+        </form>
+      ) : null}
 
       <div className="my-4 flex items-center gap-3">
         <div className="h-px flex-1 bg-slate-200" />

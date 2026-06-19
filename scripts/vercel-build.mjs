@@ -160,6 +160,12 @@ if (migrationUrl !== runtimeUrl) {
 try {
   syncDatabaseSchema(migrationUrl);
   run("npx prisma generate");
+
+  if (process.env.SEED_DEMO_DATA === "true") {
+    console.log("\n▶ Seeding demo listings and bypass student…\n");
+    run("node scripts/seed.mjs");
+  }
+
   run("npx next build");
   console.log("\n✓ Build completed successfully\n");
 } catch {

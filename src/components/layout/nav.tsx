@@ -3,10 +3,12 @@ import { Role } from "@prisma/client";
 import { getAuthUser, getSessionUser } from "@/lib/auth/session";
 import { ROLE_HOME } from "@/lib/auth/roles";
 import { tryCreateClient } from "@/lib/supabase/server";
+import { clearDemoSession } from "@/lib/auth/demo-session";
 import { redirect } from "next/navigation";
 
 async function signOut() {
   "use server";
+  await clearDemoSession();
   const supabase = await tryCreateClient();
   if (supabase) {
     await supabase.auth.signOut();

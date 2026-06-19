@@ -1,141 +1,84 @@
 /**
- * Seeds demo auth users (Supabase Admin API) and mock app data (Prisma).
+ * Seeds fake listings + a Prisma-only demo student (no Supabase auth).
  *
- * Required env:
- *   DATABASE_URL
- *   NEXT_PUBLIC_SUPABASE_URL
- *   SUPABASE_SERVICE_ROLE_KEY
- *
+ * Required: DATABASE_URL
  * Run: npm run db:seed
+ * Vercel: set SEED_DEMO_DATA=true to run automatically on deploy
  */
 
 import { PrismaClient, Role, ListingStatus, ApplicationStatus } from "@prisma/client";
-import { createClient } from "@supabase/supabase-js";
 
-const DEMO_PASSWORD = "Demo1234!";
+export const DEMO_STUDENT_ID = "theboard-demo-student";
 
-const ACCOUNTS = {
-  student: {
-    email: "demo@theboard.app",
-    name: "Alex Chen",
-    role: Role.STUDENT,
-    district: "Colombo",
-    skills: ["React", "TypeScript", "Python", "UI Design"],
+const EMPLOYERS = [
+  { id: "poster-acme-labs", name: "Acme Labs", email: "jobs@acmelabs.lk", district: "Colombo" },
+  { id: "poster-wave-analytics", name: "Wave Analytics", email: "careers@wave.lk", district: "Colombo" },
+  { id: "poster-kandy-digital", name: "Kandy Digital", email: "hello@kandydigital.lk", district: "Kandy" },
+  { id: "poster-ceylon-creative", name: "Ceylon Creative", email: "studio@ceyloncreative.lk", district: "Colombo" },
+  { id: "poster-fintech-lanka", name: "FinTech Lanka", email: "talent@fintechlanka.lk", district: "Colombo" },
+  { id: "poster-greencode", name: "GreenCode", email: "team@greencode.io", district: "Colombo" },
+  { id: "poster-campus-connect", name: "Campus Connect", email: "ops@campusconnect.lk", district: "Colombo" },
+  { id: "poster-pixel-studios", name: "Pixel Studios", email: "work@pixelstudios.lk", district: "Galle" },
+  { id: "poster-databridge", name: "DataBridge", email: "hr@databridge.lk", district: "Colombo" },
+  { id: "poster-spark-marketing", name: "Spark Marketing", email: "join@sparkmarketing.lk", district: "Negombo" },
+];
+
+const JOB_TEMPLATES = [
+  {
+    title: "Frontend Developer Intern",
+    description: "Build React features for our customer dashboard. Pair with a senior engineer twice a week.",
+    skillsRequired: ["React", "TypeScript", "CSS"],
   },
-  poster: {
-    email: "employer@theboard.app",
-    name: "Lanka Tech Labs",
-    role: Role.POSTER,
-    district: "Colombo",
-    skills: [],
+  {
+    title: "Backend API Gig",
+    description: "Help maintain Node.js REST endpoints and write integration tests. 10–12 hours per week.",
+    skillsRequired: ["Node.js", "PostgreSQL", "API Design"],
   },
-};
+  {
+    title: "UI/UX Design Assistant",
+    description: "Create wireframes and high-fidelity screens in Figma for mobile and web products.",
+    skillsRequired: ["UI Design", "Figma", "Prototyping"],
+  },
+  {
+    title: "Python Data Intern",
+    description: "Clean datasets, run exploratory analysis, and document findings for the product team.",
+    skillsRequired: ["Python", "Data Analysis", "Pandas"],
+  },
+  {
+    title: "Content & Social Media Intern",
+    description: "Draft blog posts, schedule social content, and track engagement metrics.",
+    skillsRequired: ["Writing", "Social Media", "Canva"],
+  },
+  {
+    title: "Mobile App Tester",
+    description: "Run test plans on Android builds, log bugs, and verify fixes before release.",
+    skillsRequired: ["QA", "Mobile Testing", "Attention to Detail"],
+  },
+  {
+    title: "DevOps Helper (Part-time)",
+    description: "Assist with CI pipelines, Docker configs, and staging deployments.",
+    skillsRequired: ["Docker", "Git", "Linux"],
+  },
+  {
+    title: "Customer Support Associate",
+    description: "Answer user tickets, update help docs, and escalate bugs to engineering.",
+    skillsRequired: ["Communication", "Customer Service", "Documentation"],
+  },
+  {
+    title: "Machine Learning Research Assistant",
+    description: "Label data, reproduce baseline models, and summarize papers for the ML team.",
+    skillsRequired: ["Python", "Machine Learning", "Research"],
+  },
+  {
+    title: "Video Editing Gig",
+    description: "Edit short-form product demos and event recaps for YouTube and Instagram.",
+    skillsRequired: ["Video Editing", "Premiere Pro", "Storytelling"],
+  },
+];
 
-function requireEnv(name) {
-  const value = process.env[name];
-  if (!value) {
-    console.error(`Missing ${name}. Add it to .env or Vercel env vars.`);
-    process.exit(1);
-  }
-  return value;
-}
-
-const supabase = createClient(
-  requireEnv("NEXT_PUBLIC_SUPABASE_URL"),
-  requireEnv("SUPABASE_SERVICE_ROLE_KEY"),
-  { auth: { autoRefreshToken: false, persistSession: false } },
-);
+const DISTRICTS = ["Colombo", "Kandy", "Galle", "Jaffna", "Negombo", null];
 
 const prisma = new PrismaClient();
-
-async function findAuthUserByEmail(email) {
-  let page = 1;
-  const perPage = 200;
-
-  while (true) {
-    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
-    if (error) throw error;
-
-    const match = data.users.find((user) => user.email?.toLowerCase() === email.toLowerCase());
-    if (match) return match;
-
-    if (data.users.length < perPage) return null;
-    page += 1;
-  }
-}
-
-async function getOrCreateAuthUser(account) {
-  const metadata = { role: account.role, name: account.name };
-  const existing = await findAuthUserByEmail(account.email);
-
-  if (existing) {
-    const { error } = await supabase.auth.admin.updateUserById(existing.id, {
-      password: DEMO_PASSWORD,
-      email_confirm: true,
-      user_metadata: metadata,
-    });
-    if (error) throw error;
-    return existing.id;
-  }
-
-  const { data, error } = await supabase.auth.admin.createUser({
-    email: account.email,
-    password: DEMO_PASSWORD,
-    email_confirm: true,
-    user_metadata: metadata,
-  });
-
-  if (error) throw error;
-  return data.user.id;
-}
-
-async function upsertAppUser(id, account) {
-  return prisma.user.upsert({
-    where: { id },
-    create: {
-      id,
-      email: account.email,
-      name: account.name,
-      role: account.role,
-      district: account.district,
-      skills: account.skills,
-    },
-    update: {
-      email: account.email,
-      name: account.name,
-      role: account.role,
-      district: account.district,
-      skills: account.skills,
-    },
-  });
-}
-
-async function clearDemoData(studentId, posterId) {
-  await prisma.message.deleteMany({
-    where: {
-      OR: [
-        { senderId: studentId },
-        { application: { studentId } },
-        { application: { listing: { posterId } } },
-      ],
-    },
-  });
-
-  await prisma.application.deleteMany({
-    where: {
-      OR: [{ studentId }, { listing: { posterId } }],
-    },
-  });
-
-  await prisma.savedSearch.deleteMany({ where: { studentId } });
-  await prisma.report.deleteMany({
-    where: {
-      OR: [{ reporterId: studentId }, { listing: { posterId } }],
-    },
-  });
-
-  await prisma.listing.deleteMany({ where: { posterId } });
-}
 
 function daysFromNow(days) {
   const date = new Date();
@@ -143,136 +86,141 @@ function daysFromNow(days) {
   return date;
 }
 
-async function seedListings(posterId) {
-  const listings = [
-    {
-      title: "Frontend Developer Intern",
-      description:
-        "Join our product team to build React dashboards for local SMEs. You'll pair with a senior dev, ship small features weekly, and learn our design system.",
-      district: "Colombo",
-      isRemote: false,
-      isPartTime: true,
-      skillsRequired: ["React", "TypeScript", "CSS"],
-      deadline: daysFromNow(21),
-      viewCount: 42,
-    },
-    {
-      title: "Python Data Assistant (Remote)",
-      description:
-        "Help clean and label datasets for a climate analytics project. Comfortable with pandas and basic statistics. 10–15 hours per week.",
-      district: null,
-      isRemote: true,
-      isPartTime: true,
-      skillsRequired: ["Python", "Data Analysis"],
-      deadline: daysFromNow(30),
-      viewCount: 18,
-    },
-    {
-      title: "UI/UX Design Gig — Mobile App",
-      description:
-        "We need wireframes and a clickable Figma prototype for a student marketplace app. Portfolio link required in your application.",
-      district: "Colombo",
-      isRemote: true,
-      isPartTime: false,
-      skillsRequired: ["UI Design", "Figma"],
-      deadline: daysFromNow(14),
-      viewCount: 27,
-    },
-    {
-      title: "Part-time React Tutor",
-      description:
-        "Tutor first-year CS students on React hooks and component patterns. Sessions are 2 evenings per week on campus.",
-      district: "Colombo",
-      isRemote: false,
-      isPartTime: true,
-      skillsRequired: ["React", "Teaching"],
-      deadline: daysFromNow(45),
-      viewCount: 11,
-    },
-    {
-      title: "Marketing & Content Intern",
-      description:
-        "Write blog posts and social copy for a fintech startup. No coding required — strong writing and curiosity about tech finance.",
-      district: "Kandy",
-      isRemote: true,
-      isPartTime: true,
-      skillsRequired: ["Writing", "Social Media"],
-      deadline: daysFromNow(20),
-      viewCount: 9,
-    },
-  ];
-
-  const created = [];
-  for (const listing of listings) {
-    created.push(
-      await prisma.listing.create({
-        data: {
-          posterId,
-          status: ListingStatus.ACTIVE,
-          ...listing,
-        },
-      }),
-    );
-  }
-  return created;
+function pick(array, index) {
+  return array[index % array.length];
 }
 
-async function main() {
-  console.log("Seeding demo accounts and mock data…\n");
+function buildListingSeed(posterId, posterDistrict, index) {
+  const template = pick(JOB_TEMPLATES, index);
+  const isRemote = index % 3 === 0;
+  const isPartTime = index % 2 === 0;
+  const district = isRemote ? (index % 4 === 0 ? posterDistrict : pick(DISTRICTS, index)) : posterDistrict;
 
-  const studentAuthId = await getOrCreateAuthUser(ACCOUNTS.student);
-  const posterAuthId = await getOrCreateAuthUser(ACCOUNTS.poster);
+  return {
+    posterId,
+    title: `${template.title}${index > 9 ? ` (#${index + 1})` : ""}`,
+    description: template.description,
+    district,
+    isRemote,
+    isPartTime,
+    skillsRequired: template.skillsRequired,
+    deadline: daysFromNow(7 + (index % 45)),
+    viewCount: 5 + ((index * 17) % 120),
+    status: ListingStatus.ACTIVE,
+  };
+}
 
-  const student = await upsertAppUser(studentAuthId, ACCOUNTS.student);
-  const poster = await upsertAppUser(posterAuthId, ACCOUNTS.poster);
-
-  await clearDemoData(student.id, poster.id);
-  const listings = await seedListings(poster.id);
-
-  const [frontendListing, pythonListing, designListing] = listings;
-
-  const appliedApplication = await prisma.application.create({
-    data: {
-      listingId: frontendListing.id,
-      studentId: student.id,
-      status: ApplicationStatus.VIEWED,
+async function clearSeedData(posterIds) {
+  await prisma.message.deleteMany({
+    where: { application: { studentId: DEMO_STUDENT_ID } },
+  });
+  await prisma.application.deleteMany({
+    where: { OR: [{ studentId: DEMO_STUDENT_ID }, { listing: { posterId: { in: posterIds } } }] },
+  });
+  await prisma.savedSearch.deleteMany({ where: { studentId: DEMO_STUDENT_ID } });
+  await prisma.report.deleteMany({
+    where: {
+      OR: [{ reporterId: DEMO_STUDENT_ID }, { listing: { posterId: { in: posterIds } } }],
     },
   });
-
-  await prisma.application.create({
-    data: {
-      listingId: pythonListing.id,
-      studentId: student.id,
-      status: ApplicationStatus.APPLIED,
-    },
+  await prisma.listing.deleteMany({ where: { posterId: { in: posterIds } } });
+  await prisma.user.deleteMany({
+    where: { id: { in: [DEMO_STUDENT_ID, ...posterIds] } },
   });
+}
 
-  await prisma.application.create({
-    data: {
-      listingId: designListing.id,
-      studentId: student.id,
-      status: ApplicationStatus.INTERVIEW,
-    },
-  });
-
-  await prisma.message.createMany({
-    data: [
-      {
-        applicationId: appliedApplication.id,
-        senderId: poster.id,
-        body: "Hi Alex — we liked your profile. Are you available for a quick call this week?",
+async function seedEmployers() {
+  for (const employer of EMPLOYERS) {
+    await prisma.user.create({
+      data: {
+        id: employer.id,
+        email: employer.email,
+        name: employer.name,
+        role: Role.POSTER,
+        district: employer.district,
+        skills: [],
       },
-      {
-        applicationId: appliedApplication.id,
-        senderId: student.id,
-        body: "Thanks! I'm free Thursday after 4pm. Looking forward to it.",
-      },
-    ],
+    });
+  }
+}
+
+async function seedListings() {
+  const rows = [];
+  let index = 0;
+
+  for (const employer of EMPLOYERS) {
+    for (let i = 0; i < 6; i += 1) {
+      rows.push(buildListingSeed(employer.id, employer.district, index));
+      index += 1;
+    }
+  }
+
+  await prisma.listing.createMany({ data: rows });
+  return prisma.listing.findMany({
+    where: { posterId: { in: EMPLOYERS.map((e) => e.id) } },
+    orderBy: { createdAt: "asc" },
   });
+}
+
+async function seedDemoStudent() {
+  return prisma.user.create({
+    data: {
+      id: DEMO_STUDENT_ID,
+      email: "guest@theboard.app",
+      name: "Jordan Smith",
+      role: Role.STUDENT,
+      district: "Colombo",
+      skills: ["React", "TypeScript", "Python", "UI Design"],
+    },
+  });
+}
+
+async function seedApplications(studentId, listings) {
+  const picks = listings.filter((_, i) => i % 7 === 0).slice(0, 8);
+  const statuses = [
+    ApplicationStatus.APPLIED,
+    ApplicationStatus.VIEWED,
+    ApplicationStatus.INTERVIEW,
+    ApplicationStatus.OFFER,
+    ApplicationStatus.REJECTED,
+  ];
+
+  for (let i = 0; i < picks.length; i += 1) {
+    await prisma.application.create({
+      data: {
+        listingId: picks[i].id,
+        studentId,
+        status: pick(statuses, i),
+      },
+    });
+  }
+
+  const firstApplication = await prisma.application.findFirst({
+    where: { studentId },
+    orderBy: { createdAt: "asc" },
+  });
+
+  if (firstApplication) {
+    const posterId = listings[0].posterId;
+    await prisma.message.createMany({
+      data: [
+        {
+          applicationId: firstApplication.id,
+          senderId: posterId,
+          body: "Hi Jordan — thanks for applying. Can you share a link to something you have built?",
+        },
+        {
+          applicationId: firstApplication.id,
+          senderId: studentId,
+          body: "Sure — I will send my portfolio link. I am free for a call Thursday afternoon.",
+        },
+      ],
+    });
+  }
 
   await prisma.savedSearch.create({
     data: {
-      studentId: student.id,
+      studentId,
       filters: {
         district: "Colombo",
         remote: true,
@@ -281,18 +229,27 @@ async function main() {
       },
     },
   });
+}
 
-  console.log("Demo accounts (password for both):", DEMO_PASSWORD);
+async function main() {
+  const posterIds = EMPLOYERS.map((e) => e.id);
+
+  console.log("Seeding sample employers, listings, and demo student…\n");
+
+  await clearSeedData(posterIds);
+  await seedEmployers();
+  const listings = await seedListings();
+  const student = await seedDemoStudent();
+  await seedApplications(student.id, listings);
+
+  console.log(`Created ${EMPLOYERS.length} employers`);
+  console.log(`Created ${listings.length} active listings (browse /listings — no login needed)`);
   console.log("");
-  console.log("  Student — log in, browse listings, view applications");
-  console.log(`    Email:    ${ACCOUNTS.student.email}`);
-  console.log(`    Password: ${DEMO_PASSWORD}`);
+  console.log("Demo student (cookie login — no Supabase):");
+  console.log("  Log in page → Try demo student (no email)");
+  console.log("  Requires ENABLE_DEMO_BYPASS=true on Vercel");
   console.log("");
-  console.log("  Poster — manage listings and applicants");
-  console.log(`    Email:    ${ACCOUNTS.poster.email}`);
-  console.log(`    Password: ${DEMO_PASSWORD}`);
-  console.log("");
-  console.log(`Created ${listings.length} listings, 3 applications, 2 messages, 1 saved search.`);
+  console.log(`Demo profile: ${student.name} · ${student.district}`);
 }
 
 main()
