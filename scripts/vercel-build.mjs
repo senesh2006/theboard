@@ -2,138 +2,15 @@
 
 /**
  * Vercel build: validate DATABASE_URL, sync schema, build Next.js.
- * Uses port 5432 for Prisma during build (migrations); runtime keeps your Vercel env.
+ * Auto-converts Supabase direct URLs (db.*) to session pooler for Vercel.
  */
 
 import { execSync } from "node:child_process";
-
-function normalizeEnvUrl(value) {
-  if (!value) return value;
-  let trimmed = value.trim();
-  if (trimmed.startsWith("DATABASE_URL=")) {
-    trimmed = trimmed.slice("DATABASE_URL=".length).trim();
-  }
-  if (
-    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-    (trimmed.startsWith("'") && trimmed.endsWith("'"))
-  ) {
-    trimmed = trimmed.slice(1, -1).trim();
-  }
-  return trimmed;
-}
-
-function parsePostgresUrl(value) {
-  const match = value.match(/^(postgres(?:ql)?:\/\/)(.+)$/i);
-  if (!match) return null;
-
-  const rest = match[2];
-  const at = rest.lastIndexOf("@");
-  if (at <= 0) return null;
-
-  const userInfo = rest.slice(0, at);
-  const hostPath = rest.slice(at + 1);
-  const colon = userInfo.indexOf(":");
-  if (colon <= 0) return null;
-
-  return {
-    protocol: match[1],
-    user: userInfo.slice(0, colon),
-    password: userInfo.slice(colon + 1),
-    hostPath,
-  };
-}
-
-function buildPostgresUrl(parts) {
-  return `${parts.protocol}${parts.user}:${parts.password}@${parts.hostPath}`;
-}
-
-function canParseUrl(value) {
-  try {
-    new URL(value);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/** Fix passwords with @ # : etc. that break URL parsing. */
-function fixDatabaseUrl(value) {
-  if (canParseUrl(value)) {
-    return { url: value, fixed: false };
-  }
-
-  const parts = parsePostgresUrl(value);
-  if (!parts) {
-    return { url: value, fixed: false };
-  }
-
-  // Already percent-encoded — don't double-encode.
-  if (/%[0-9A-Fa-f]{2}/.test(parts.password)) {
-    return { url: value, fixed: false };
-  }
-
-  const encoded = buildPostgresUrl({
-    ...parts,
-    password: encodeURIComponent(parts.password),
-  });
-
-  if (canParseUrl(encoded)) {
-    return { url: encoded, fixed: true };
-  }
-
-  return { url: value, fixed: false };
-}
-
-function getSupabaseProjectRef() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-  const match = url.match(/https:\/\/([^.]+)\.supabase\.co/);
-  return match?.[1] ?? null;
-}
-
-/** Supabase pooler requires postgres.PROJECT_REF, not plain postgres. */
-function fixSupabaseUsername(value) {
-  const parts = parsePostgresUrl(value);
-  if (!parts || !parts.hostPath.includes("pooler.supabase.com")) {
-    return { url: value, fixed: false };
-  }
-
-  if (parts.user.startsWith("postgres.")) {
-    return { url: value, fixed: false };
-  }
-
-  const projectRef =
-    getSupabaseProjectRef() ??
-    parts.hostPath.match(/db\.([^.]+)\.supabase\.co/)?.[1] ??
-    "mpuboebxkugbobspodwd";
-
-  if (parts.user !== "postgres") {
-    return { url: value, fixed: false };
-  }
-
-  const fixed = buildPostgresUrl({
-    ...parts,
-    user: `postgres.${projectRef}`,
-  });
-
-  return { url: fixed, fixed: true };
-}
-
-function prepareDatabaseUrl(value) {
-  let url = normalizeEnvUrl(value) ?? "";
-  const encoded = fixDatabaseUrl(url);
-  url = encoded.url;
-  if (encoded.fixed) {
-    console.log("✓ Auto-encoded special characters in DATABASE_URL password");
-  }
-
-  const userFix = fixSupabaseUsername(url);
-  url = userFix.url;
-  if (userFix.fixed) {
-    console.log("✓ Fixed pooler username to postgres.PROJECT_REF format");
-  }
-
-  return url;
-}
+import {
+  normalizeEnvUrl,
+  resolveDatabaseUrl,
+  toMigrationUrl,
+} from "../src/lib/database-url.mjs";
 
 function diagnoseInvalidUrl(value) {
   const atCount = (value.match(/@/g) ?? []).length;
@@ -163,7 +40,11 @@ function validateDatabaseUrl(name, value) {
     return { ok: false, message: `${name} still contains a password placeholder.` };
   }
 
-  trimmed = prepareDatabaseUrl(trimmed);
+  const resolved = resolveDatabaseUrl(trimmed);
+  for (const line of resolved.logs) {
+    console.log(`✓ ${line}`);
+  }
+  trimmed = resolved.url;
 
   let parsed;
   try {
@@ -195,31 +76,14 @@ function validateDatabaseUrl(name, value) {
     return { ok: false, message: `${name} must end with /postgres` };
   }
 
-  if (/^db\.[^.]+\.supabase\.co$/i.test(parsed.hostname)) {
-    return {
-      ok: false,
-      message: `${name} uses Supabase direct host (${parsed.hostname}). Vercel cannot reach it (P1001). Use the Session pooler URL from Supabase Connect instead.`,
-    };
-  }
-
   if (parsed.hostname.includes("pooler.supabase.com") && parsed.username === "postgres") {
     return {
       ok: false,
-      message: `${name} pooler username must be postgres.mpuboebxkugbobspodwd, not postgres.`,
+      message: `${name} pooler username must be postgres.PROJECT_REF, not postgres.`,
     };
   }
 
   return { ok: true, trimmed, port, hostname: parsed.hostname, username: parsed.username };
-}
-
-/** Prisma migrations need session mode (5432), not transaction pooler (6543). */
-function toMigrationUrl(databaseUrl) {
-  return databaseUrl
-    .replace(":6543/", ":5432/")
-    .replace(":6543?", ":5432?")
-    .replace(/\?pgbouncer=true&?/, "?")
-    .replace(/&pgbouncer=true/, "")
-    .replace(/\?$/, "");
 }
 
 function run(command, env = process.env) {
@@ -246,15 +110,17 @@ function syncDatabaseSchema(migrationUrl) {
     console.log("✓ prisma db push succeeded");
   } catch (error) {
     console.error("\n❌ Could not sync database schema.\n");
-    console.error("P1001 = Vercel cannot reach db.*.supabase.co — use Session pooler URL.");
+    console.error("P1001 = cannot reach database — check pooler host and password.");
     console.error("P1000 = wrong password or username.");
     console.error("");
-    console.error("Use this DATABASE_URL on Vercel (Session pooler, port 5432):");
+    console.error("Preferred DATABASE_URL on Vercel (Session pooler, port 5432):");
     console.error(
       "postgresql://postgres.mpuboebxkugbobspodwd:YOUR_PASSWORD@aws-1-ap-southeast-2.pooler.supabase.com:5432/postgres",
     );
     console.error("");
-    console.error("Copy from Supabase → Connect → Session pooler. Do NOT use db.*.supabase.co on Vercel.");
+    console.error(
+      "Direct db.*.supabase.co URLs are auto-converted at build/runtime. If sync still fails, paste the pooler URL from Supabase → Connect.",
+    );
     throw error;
   }
 }
@@ -266,18 +132,17 @@ if (process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL) {
 }
 
 const rawDatabaseUrl = process.env.DATABASE_URL;
-
 const check = validateDatabaseUrl("DATABASE_URL", rawDatabaseUrl);
 
 if (!check.ok) {
   console.error(`\n❌ ${check.message}\n`);
   console.error(`In Vercel → Settings → Environment Variables, set DATABASE_URL for Production.
 
-Use Supabase → Connect → Session pooler (NOT direct connection):
+Use Supabase → Connect → Session pooler:
 
 postgresql://postgres.mpuboebxkugbobspodwd:YOUR_PASSWORD@aws-1-ap-southeast-2.pooler.supabase.com:5432/postgres
 
-Direct db.*.supabase.co URLs do not work on Vercel (P1001). Paste ONLY the URL (no quotes).
+Paste ONLY the URL (no quotes). Direct db.* URLs are auto-converted if your pooler region matches.
 `);
   process.exit(1);
 }
@@ -285,9 +150,11 @@ Direct db.*.supabase.co URLs do not work on Vercel (P1001). Paste ONLY the URL (
 const runtimeUrl = check.trimmed;
 const migrationUrl = toMigrationUrl(runtimeUrl);
 
+process.env.DATABASE_URL = runtimeUrl;
+
 console.log(`✓ DATABASE_URL → ${check.username}@${check.hostname}:${check.port}`);
 if (migrationUrl !== runtimeUrl) {
-  console.log(`✓ Using port 5432 for schema sync during build`);
+  console.log("✓ Using port 5432 for schema sync during build");
 }
 
 try {
