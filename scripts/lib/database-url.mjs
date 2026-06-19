@@ -175,3 +175,76 @@ export function toMigrationUrl(databaseUrl) {
     .replace(/&pgbouncer=true/, "")
     .replace(/\?$/, "");
 }
+
+/** Transaction pooler (port 6543) — use for serverless runtime queries. */
+export function toRuntimeUrl(databaseUrl, env = process.env) {
+  const { url } = resolveDatabaseUrl(databaseUrl, env);
+  let runtime = url
+    .replace(":5432/", ":6543/")
+    .replace(":5432?", ":6543?");
+
+  try {
+    const parsed = new URL(runtime);
+    parsed.searchParams.set("pgbouncer", "true");
+    parsed.searchParams.set("connection_limit", "1");
+    return parsed.toString();
+  } catch {
+    const joiner = runtime.includes("?") ? "&" : "?";
+    return `${runtime}${joiner}pgbouncer=true&connection_limit=1`;
+  }
+}
+
+function withMigrationParams(url) {
+  try {
+    const parsed = new URL(url);
+    parsed.searchParams.set("connection_limit", "1");
+    parsed.searchParams.set("connect_timeout", "30");
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * Direct Postgres host for prisma migrate — avoids session pooler max-client limits.
+ * Prefer explicit DIRECT_URL; otherwise derive db.PROJECT_REF.supabase.co from pooler URL.
+ */
+export function toDirectMigrationUrl(databaseUrl, env = process.env) {
+  if (env.DIRECT_URL) {
+    return withMigrationParams(resolveDatabaseUrl(env.DIRECT_URL, env).url);
+  }
+
+  const { url } = resolveDatabaseUrl(databaseUrl, env);
+  const parts = parsePostgresUrl(url);
+  if (!parts) return withMigrationParams(url);
+
+  const projectRef = getSupabaseProjectRef(env);
+
+  if (/db\.[^.]+\.supabase\.co/i.test(parts.hostPath)) {
+    const user = parts.user.startsWith("postgres.") ? "postgres" : parts.user;
+    return withMigrationParams(
+      buildPostgresUrl({ ...parts, user }),
+    );
+  }
+
+  const direct = buildPostgresUrl({
+    protocol: parts.protocol,
+    user: "postgres",
+    password: parts.password,
+    hostPath: `db.${projectRef}.supabase.co:5432/postgres`,
+  });
+
+  return withMigrationParams(direct);
+}
+
+export function isPoolExhaustedError(error) {
+  const text =
+    error instanceof Error
+      ? `${error.message}\n${error.stderr ?? ""}`
+      : String(error);
+  return (
+    text.includes("max clients reached") ||
+    text.includes("EMAXCONNSESSION") ||
+    text.includes("too many clients")
+  );
+}
