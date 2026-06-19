@@ -3,9 +3,13 @@
 @tailwind utilities;
 
 :root {
-  --background: #eef2ff;
-  --foreground: #0f172a;
-  --liquid-glass-tint: #ffffff;
+  --background: #030712;
+  --foreground: #e2e8f0;
+  --liquid-glass-tint: rgba(15, 23, 42, 0.72);
+}
+
+html {
+  color-scheme: dark;
 }
 
 body {
@@ -16,28 +20,28 @@ body {
 
 /* Base layer behind Framer floating animation */
 .liquid-glass-scene {
-  background: linear-gradient(160deg, #eef2ff 0%, #f8fafc 50%, #e0e7ff 100%);
+  background: linear-gradient(165deg, #020617 0%, #0f172a 45%, #1e1b4b 100%);
 }
 
-/* Liquid glass surfaces (web port of @callstack/liquid-glass API) */
+/* Liquid glass — dark mode surfaces */
 .liquid-glass-regular {
-  background: rgba(255, 255, 255, 0.52);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.58);
+  background: rgba(15, 23, 42, 0.58);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow:
-    0 8px 32px rgba(15, 23, 42, 0.07),
-    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+    0 8px 32px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .liquid-glass-clear {
-  background: rgba(255, 255, 255, 0.28);
-  backdrop-filter: blur(16px) saturate(200%);
-  -webkit-backdrop-filter: blur(16px) saturate(200%);
-  border: 1px solid rgba(255, 255, 255, 0.42);
+  background: rgba(15, 23, 42, 0.38);
+  backdrop-filter: blur(16px) saturate(170%);
+  -webkit-backdrop-filter: blur(16px) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow:
-    0 4px 20px rgba(15, 23, 42, 0.05),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    0 4px 20px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .liquid-glass-none {
@@ -48,12 +52,12 @@ body {
   box-shadow: none;
 }
 
-.liquid-glass-dark.liquid-glass-regular {
-  background: rgba(15, 23, 42, 0.55);
-  border-color: rgba(255, 255, 255, 0.12);
+.liquid-glass-light.liquid-glass-regular {
+  background: rgba(255, 255, 255, 0.52);
+  border-color: rgba(255, 255, 255, 0.58);
   box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    0 8px 32px rgba(15, 23, 42, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
 }
 
 .liquid-glass-interactive {
@@ -64,10 +68,10 @@ body {
 }
 
 .liquid-glass-interactive:hover {
-  background: rgba(255, 255, 255, 0.62);
+  background: rgba(30, 41, 59, 0.72);
   box-shadow:
-    0 12px 40px rgba(15, 23, 42, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    0 12px 40px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .liquid-glass-interactive:active {
@@ -82,10 +86,119 @@ body {
 
 @supports not (backdrop-filter: blur(1px)) {
   .liquid-glass-regular {
-    background: rgba(255, 255, 255, 0.94);
+    background: rgba(15, 23, 42, 0.94);
   }
 
   .liquid-glass-clear {
-    background: rgba(255, 255, 255, 0.88);
+    background: rgba(15, 23, 42, 0.88);
   }
+}
+
+/* Tailwind slate utilities → dark palette */
+.text-slate-900 {
+  color: rgb(241 245 249);
+}
+
+.text-slate-800 {
+  color: rgb(226 232 240);
+}
+
+.text-slate-700 {
+  color: rgb(203 213 225);
+}
+
+.text-slate-600 {
+  color: rgb(148 163 184);
+}
+
+.text-slate-500 {
+  color: rgb(100 116 139);
+}
+
+.text-slate-400 {
+  color: rgb(148 163 184);
+}
+
+.text-indigo-700 {
+  color: rgb(129 140 248);
+}
+
+.hover\:text-indigo-700:hover {
+  color: rgb(165 180 252);
+}
+
+.border-slate-100 {
+  border-color: rgb(51 65 85 / 0.45);
+}
+
+.border-slate-200 {
+  border-color: rgb(51 65 85 / 0.55);
+}
+
+.border-slate-300 {
+  border-color: rgb(71 85 105 / 0.65);
+}
+
+.divide-slate-100 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgb(51 65 85 / 0.45);
+}
+
+.bg-white {
+  background-color: rgb(15 23 42 / 0.72);
+}
+
+.bg-slate-50 {
+  background-color: rgb(15 23 42 / 0.55);
+}
+
+.bg-slate-100 {
+  background-color: rgb(30 41 59 / 0.55);
+}
+
+.hover\:bg-slate-50:hover {
+  background-color: rgb(30 41 59 / 0.65);
+}
+
+.hover\:bg-slate-100:hover {
+  background-color: rgb(51 65 85 / 0.55);
+}
+
+.hover\:bg-indigo-50:hover {
+  background-color: rgb(49 46 129 / 0.35);
+}
+
+.hover\:border-indigo-300:hover {
+  border-color: rgb(99 102 241 / 0.55);
+}
+
+.focus\:ring-indigo-200:focus {
+  --tw-ring-color: rgb(99 102 241 / 0.35);
+}
+
+.placeholder\:text-slate-400::placeholder {
+  color: rgb(100 116 139);
+}
+
+.text-red-600 {
+  color: rgb(248 113 113);
+}
+
+.text-amber-700 {
+  color: rgb(251 191 36);
+}
+
+.text-indigo-100 {
+  color: rgb(224 231 255);
+}
+
+.text-indigo-600 {
+  color: rgb(129 140 248);
+}
+
+.hover\:underline:hover {
+  text-decoration-color: rgb(129 140 248);
+}
+
+.group:hover .group-hover\:text-indigo-700 {
+  color: rgb(165 180 252);
 }

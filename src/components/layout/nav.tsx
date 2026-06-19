@@ -26,17 +26,17 @@ export async function Nav() {
       <header className="sticky top-0 z-40">
         <LiquidGlassView
           effect="regular"
-          className="border-b border-white/40 shadow-sm"
+          className="border-b border-white/10 shadow-sm"
         >
           <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4">
-          <Link href="/" className="text-lg font-semibold text-indigo-700">
+          <Link href="/" className="text-lg font-semibold text-indigo-400">
             TheBoard
           </Link>
 
           <nav className="flex items-center gap-2 sm:gap-4">
             <Link
               href="/listings"
-              className="text-sm font-medium text-slate-700 hover:text-indigo-700"
+              className="text-sm font-medium text-slate-300 hover:text-indigo-300"
             >
               Browse
             </Link>
@@ -53,7 +53,7 @@ export async function Nav() {
                 )}
                 <Link
                   href={ROLE_HOME[dbUser.role]}
-                  className="text-sm font-medium text-slate-700 hover:text-indigo-700"
+                  className="text-sm font-medium text-slate-300 hover:text-indigo-300"
                 >
                   Dashboard
                 </Link>
@@ -80,7 +80,7 @@ export async function Nav() {
                 <form action={signOut}>
                   <button
                     type="submit"
-                    className="text-sm font-medium text-slate-500 hover:text-slate-800"
+                    className="text-sm font-medium text-slate-400 hover:text-slate-200"
                   >
                     Sign out
                   </button>
@@ -90,14 +90,14 @@ export async function Nav() {
               <>
                 <Link
                   href="/onboarding"
-                  className="text-sm font-medium text-indigo-700 hover:underline"
+                  className="text-sm font-medium text-indigo-300 hover:underline"
                 >
                   Complete setup
                 </Link>
                 <form action={signOut}>
                   <button
                     type="submit"
-                    className="text-sm font-medium text-slate-500 hover:text-slate-800"
+                    className="text-sm font-medium text-slate-400 hover:text-slate-200"
                   >
                     Sign out
                   </button>
@@ -107,7 +107,7 @@ export async function Nav() {
               <>
                 <Link
                   href="/login"
-                  className="text-sm font-medium text-slate-700 hover:text-indigo-700"
+                  className="text-sm font-medium text-slate-300 hover:text-indigo-300"
                 >
                   Log in
                 </Link>
@@ -128,12 +128,12 @@ export async function Nav() {
     console.error("Nav render failed:", error);
     return (
       <header className="sticky top-0 z-40">
-        <LiquidGlassView effect="regular" className="border-b border-white/40">
+        <LiquidGlassView effect="regular" className="border-b border-white/10">
           <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
-            <Link href="/" className="text-lg font-semibold text-indigo-700">
+            <Link href="/" className="text-lg font-semibold text-indigo-400">
               TheBoard
             </Link>
-            <Link href="/listings" className="text-sm text-slate-700">
+            <Link href="/listings" className="text-sm text-slate-300">
               Browse
             </Link>
           </div>

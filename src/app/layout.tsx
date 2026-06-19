@@ -22,8 +22,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} min-h-screen font-sans antialiased`}>
+    <html lang="en" className="dark">
+      <body className={`${geistSans.variable} min-h-screen bg-background font-sans text-foreground antialiased`}>
         <LiquidGlassBackground />
         <Nav />
         <main>{children}</main>

@@ -18,8 +18,8 @@ export function Button({
         variant === "primary" &&
           "bg-indigo-600 text-white hover:bg-indigo-700",
         variant === "secondary" &&
-          "liquid-glass liquid-glass-regular border border-white/50 text-slate-900 hover:bg-white/70",
-        variant === "ghost" && "text-slate-700 hover:bg-slate-100",
+          "liquid-glass liquid-glass-regular border border-white/10 text-slate-200 hover:bg-slate-800/60",
+        variant === "ghost" && "text-slate-300 hover:bg-slate-800/50",
         size === "sm" && "h-9 px-3 text-sm",
         size === "md" && "h-10 px-4 text-sm",
         size === "lg" && "h-11 px-6 text-base",

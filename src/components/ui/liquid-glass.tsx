@@ -17,7 +17,7 @@ export function LiquidGlassView({
   effect = "regular",
   interactive = false,
   tintColor,
-  colorScheme = "system",
+  colorScheme = "dark",
   className,
   style,
   ...props
