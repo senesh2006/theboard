@@ -13,7 +13,11 @@ async function signOut() {
 }
 
 export async function Nav() {
-  const user = await getSessionUser();
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+  const dbUser = await getSessionUser();
 
   return (
     <header className="border-b border-slate-200 bg-white">
@@ -30,9 +34,9 @@ export async function Nav() {
             Browse
           </Link>
 
-          {user ? (
+          {dbUser ? (
             <>
-              {(user.role === Role.POSTER || user.role === Role.ADMIN) && (
+              {(dbUser.role === Role.POSTER || dbUser.role === Role.ADMIN) && (
                 <Link
                   href="/listings/new"
                   className="hidden text-sm font-medium text-slate-700 hover:text-indigo-700 sm:inline"
@@ -41,22 +45,39 @@ export async function Nav() {
                 </Link>
               )}
               <Link
-                href={ROLE_HOME[user.role]}
+                href={ROLE_HOME[dbUser.role]}
                 className="text-sm font-medium text-slate-700 hover:text-indigo-700"
               >
                 Dashboard
               </Link>
               <Link
                 href={
-                  user.role === Role.STUDENT
+                  dbUser.role === Role.STUDENT
                     ? "/student/profile"
-                    : user.role === Role.POSTER
+                    : dbUser.role === Role.POSTER
                       ? "/poster/profile"
                       : "/admin"
                 }
                 className="hidden text-sm font-medium text-slate-700 hover:text-indigo-700 sm:inline"
               >
                 Profile
+              </Link>
+              <form action={signOut}>
+                <button
+                  type="submit"
+                  className="text-sm font-medium text-slate-500 hover:text-slate-800"
+                >
+                  Sign out
+                </button>
+              </form>
+            </>
+          ) : authUser ? (
+            <>
+              <Link
+                href="/onboarding"
+                className="text-sm font-medium text-indigo-700 hover:underline"
+              >
+                Complete setup
               </Link>
               <form action={signOut}>
                 <button

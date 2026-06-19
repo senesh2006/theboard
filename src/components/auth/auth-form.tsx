@@ -1,9 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useFormState, useFormStatus } from "react-dom";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import {
+  loginAction,
+  signupAction,
+  type AuthActionState,
+} from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,83 +16,69 @@ import { Card } from "@/components/ui/card";
 
 type AuthFormProps = {
   mode: "login" | "signup";
+  next?: string;
+  bannerError?: string | null;
 };
 
-export function AuthForm({ mode }: AuthFormProps) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const next = searchParams.get("next") ?? "/";
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+const initialState: AuthActionState = {};
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
+function SubmitButton({ label, loadingLabel }: { label: string; loadingLabel: string }) {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" className="w-full" disabled={pending}>
+      {pending ? loadingLabel : label}
+    </Button>
+  );
+}
 
-    const supabase = createClient();
-
-    const result =
-      mode === "login"
-        ? await supabase.auth.signInWithPassword({ email, password })
-        : await supabase.auth.signUp({ email, password });
-
-    if (result.error) {
-      setError(result.error.message);
-      setLoading(false);
-      return;
-    }
-
-    router.push(mode === "signup" ? "/onboarding" : next);
-    router.refresh();
-  }
+export function AuthForm({ mode, next = "/", bannerError }: AuthFormProps) {
+  const action = mode === "login" ? loginAction : signupAction;
+  const [state, formAction] = useFormState(action, initialState);
+  const [oauthError, setOauthError] = useState<string | null>(null);
 
   async function handleGoogle() {
-    setError(null);
+    setOauthError(null);
     const supabase = createClient();
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(
+      mode === "login" ? next : "/onboarding",
+    )}`;
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/onboarding`,
-      },
+      options: { redirectTo },
     });
-    if (oauthError) setError(oauthError.message);
+    if (error) setOauthError(error.message);
   }
+
+  const error = bannerError ?? state.error ?? oauthError;
+  const message = state.message;
 
   return (
     <Card className="mx-auto w-full max-w-md">
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form action={formAction} className="space-y-4">
+        {mode === "login" ? <input type="hidden" name="next" value={next} /> : null}
         <div>
           <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            autoComplete="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
+          <Input id="email" name="email" type="email" autoComplete="email" required />
         </div>
         <div>
           <Label htmlFor="password">Password</Label>
           <Input
             id="password"
+            name="password"
             type="password"
             autoComplete={mode === "login" ? "current-password" : "new-password"}
             required
             minLength={6}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
           />
         </div>
 
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        {message ? <p className="text-sm text-emerald-700">{message}</p> : null}
 
-        <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? "Please wait…" : mode === "login" ? "Log in" : "Create account"}
-        </Button>
+        <SubmitButton
+          label={mode === "login" ? "Log in" : "Create account"}
+          loadingLabel="Please wait…"
+        />
       </form>
 
       <div className="my-4 flex items-center gap-3">
@@ -96,12 +87,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         <div className="h-px flex-1 bg-slate-200" />
       </div>
 
-      <Button
-        type="button"
-        variant="secondary"
-        className="w-full"
-        onClick={handleGoogle}
-      >
+      <Button type="button" variant="secondary" className="w-full" onClick={handleGoogle}>
         Continue with Google
       </Button>
 
