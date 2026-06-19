@@ -205,3 +205,50 @@ body {
 .group:hover .group-hover\:text-indigo-700 {
   color: rgb(165 180 252);
 }
+
+@keyframes nav-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.app-nav-enter {
+  animation: nav-slide-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+  transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-nav-enter {
+    animation: none;
+  }
+
+  .liquid-glass-interactive {
+    transition: none;
+  }
+
+  .liquid-glass-interactive:active {
+    transform: none;
+  }
+
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    transform: none;
+    transition: none;
+  }
+}

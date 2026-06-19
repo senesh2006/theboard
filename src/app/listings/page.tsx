@@ -7,6 +7,7 @@ import { ListingFilters } from "@/components/listings/listing-filters";
 import { ListingCard } from "@/components/listings/listing-card";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
+import { StaggerGrid, StaggerItem } from "@/components/ui/motion-primitives";
 
 type ListingsPageProps = {
   searchParams: Record<string, string | string[] | undefined>;
@@ -85,11 +86,13 @@ export default async function ListingsPage({ searchParams }: ListingsPageProps) 
           <p className="text-slate-600">No listings match your filters.</p>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <StaggerGrid className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {listings.map((listing) => (
-            <ListingCard key={listing.id} listing={listing} />
+            <StaggerItem key={listing.id}>
+              <ListingCard listing={listing} />
+            </StaggerItem>
           ))}
-        </div>
+        </StaggerGrid>
       )}
 
       {totalPages > 1 ? (

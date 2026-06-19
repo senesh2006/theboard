@@ -24,7 +24,7 @@ export async function Nav() {
     const dbUser = await getSessionUser();
 
     return (
-      <header className="sticky top-0 z-40">
+      <header className="sticky top-0 z-40 app-nav-enter">
         <LiquidGlassView
           effect="regular"
           className="border-b border-white/10 shadow-sm"
@@ -128,7 +128,7 @@ export async function Nav() {
       console.error("Nav render failed:", error);
     }
     return (
-      <header className="sticky top-0 z-40">
+      <header className="sticky top-0 z-40 app-nav-enter">
         <LiquidGlassView effect="regular" className="border-b border-white/10">
           <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
             <Link href="/" className="text-lg font-semibold text-indigo-400">
