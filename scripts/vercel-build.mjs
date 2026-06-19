@@ -10,7 +10,7 @@ import {
   normalizeEnvUrl,
   resolveDatabaseUrl,
   toMigrationUrl,
-} from "../src/lib/database-url.mjs";
+} from "./lib/database-url.mjs";
 
 function diagnoseInvalidUrl(value) {
   const atCount = (value.match(/@/g) ?? []).length;

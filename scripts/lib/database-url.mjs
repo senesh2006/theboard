@@ -1,6 +1,6 @@
 /**
- * Normalizes Supabase DATABASE_URL for Vercel (direct db.* → session pooler).
- * Used by scripts/vercel-build.mjs and src/lib/db.ts (via dynamic import).
+ * Build-time copy of src/lib/database-url.ts for scripts/vercel-build.mjs.
+ * Keep in sync when changing URL normalization logic.
  */
 
 const DEFAULT_POOLER_HOST = "aws-1-ap-southeast-2.pooler.supabase.com";
@@ -90,7 +90,6 @@ export function getPoolerHost(env = process.env) {
   return env.SUPABASE_POOLER_HOST?.trim() || DEFAULT_POOLER_HOST;
 }
 
-/** Convert db.PROJECT_REF.supabase.co → aws-*-REGION.pooler.supabase.com */
 function fixSupabaseDirectToPooler(value, env = process.env) {
   const parts = parsePostgresUrl(value);
   if (!parts) return { url: value, fixed: false };
@@ -117,7 +116,7 @@ function fixSupabaseDirectToPooler(value, env = process.env) {
     hostPath: `${poolerHost}:${port}${path}${query}`,
   });
 
-  return { url: fixed, fixed: true, projectRef };
+  return { url: fixed, fixed: true };
 }
 
 function fixSupabaseUsername(value, env = process.env) {
@@ -126,11 +125,7 @@ function fixSupabaseUsername(value, env = process.env) {
     return { url: value, fixed: false };
   }
 
-  if (parts.user.startsWith("postgres.")) {
-    return { url: value, fixed: false };
-  }
-
-  if (parts.user !== "postgres") {
+  if (parts.user.startsWith("postgres.") || parts.user !== "postgres") {
     return { url: value, fixed: false };
   }
 
