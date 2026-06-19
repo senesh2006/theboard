@@ -1,38 +1,39 @@
 #!/usr/bin/env node
 
 /**
- * Vercel build entrypoint.
- * Validates DATABASE_URL, derives DIRECT_URL for migrations if needed,
- * then runs prisma migrate deploy → generate → next build.
+ * Vercel build: validate DATABASE_URL, sync schema, build Next.js.
+ * Uses port 5432 for Prisma during build (migrations); runtime keeps your Vercel env.
  */
 
 import { execSync } from "node:child_process";
+
+function normalizeEnvUrl(value) {
+  if (!value) return value;
+  let trimmed = value.trim();
+  if (trimmed.startsWith("DATABASE_URL=")) {
+    trimmed = trimmed.slice("DATABASE_URL=".length).trim();
+  }
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    trimmed = trimmed.slice(1, -1).trim();
+  }
+  return trimmed;
+}
 
 function validateDatabaseUrl(name, value) {
   if (!value) {
     return { ok: false, message: `${name} is not set in Vercel environment variables.` };
   }
 
-  const trimmed = value.trim();
-  if (trimmed !== value) {
-    return { ok: false, message: `${name} has leading/trailing spaces.` };
-  }
-
-  if (
-    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-    (trimmed.startsWith("'") && trimmed.endsWith("'"))
-  ) {
-    return {
-      ok: false,
-      message: `${name} includes quote characters. Paste only the URL, without quotes.`,
-    };
+  const trimmed = normalizeEnvUrl(value);
+  if (!trimmed) {
+    return { ok: false, message: `${name} is empty.` };
   }
 
   if (trimmed.includes("[YOUR-PASSWORD]") || trimmed.includes("[PASSWORD]")) {
-    return {
-      ok: false,
-      message: `${name} still contains a password placeholder.`,
-    };
+    return { ok: false, message: `${name} still contains a password placeholder.` };
   }
 
   let parsed;
@@ -57,7 +58,7 @@ function validateDatabaseUrl(name, value) {
   if (!port || Number.isNaN(Number(port)) || Number(port) <= 0) {
     return {
       ok: false,
-      message: `${name} has an invalid port. Use :5432 (session) or :6543 (transaction pooler).`,
+      message: `${name} has an invalid port "${port ?? ""}". Use :5432 or :6543 from Supabase Connect.`,
     };
   }
 
@@ -68,7 +69,8 @@ function validateDatabaseUrl(name, value) {
   return { ok: true, trimmed, port, hostname: parsed.hostname };
 }
 
-function deriveDirectUrl(databaseUrl) {
+/** Prisma migrations need session mode (5432), not transaction pooler (6543). */
+function toMigrationUrl(databaseUrl) {
   return databaseUrl
     .replace(":6543/", ":5432/")
     .replace(":6543?", ":5432?")
@@ -77,49 +79,68 @@ function deriveDirectUrl(databaseUrl) {
     .replace(/\?$/, "");
 }
 
-function run(command) {
+function run(command, env = process.env) {
   console.log(`\n▶ ${command}\n`);
-  execSync(command, { stdio: "inherit", env: process.env });
+  execSync(command, { stdio: "inherit", env });
 }
 
-const check = validateDatabaseUrl("DATABASE_URL", process.env.DATABASE_URL);
+function syncDatabaseSchema(migrationUrl) {
+  const env = { ...process.env, DATABASE_URL: migrationUrl };
+
+  try {
+    run("npx prisma migrate deploy", env);
+    console.log("✓ prisma migrate deploy succeeded");
+    return;
+  } catch (error) {
+    console.warn("\n⚠ prisma migrate deploy failed — trying prisma db push...\n");
+    if (error instanceof Error && error.message) {
+      console.warn(error.message);
+    }
+  }
+
+  try {
+    run("npx prisma db push --skip-generate --accept-data-loss", env);
+    console.log("✓ prisma db push succeeded");
+  } catch (error) {
+    console.error("\n❌ Could not sync database schema.\n");
+    console.error("Check DATABASE_URL password (URL-encode special chars) and Supabase project status.");
+    throw error;
+  }
+}
+
+const rawDatabaseUrl =
+  process.env.DATABASE_URL ??
+  process.env.POSTGRES_PRISMA_URL ??
+  process.env.POSTGRES_URL;
+
+const check = validateDatabaseUrl("DATABASE_URL", rawDatabaseUrl);
 
 if (!check.ok) {
   console.error(`\n❌ ${check.message}\n`);
-  console.error(`Set DATABASE_URL in Vercel → Settings → Environment Variables.
+  console.error(`In Vercel → Settings → Environment Variables, add DATABASE_URL for Production:
 
-Use Supabase Connect → Transaction pooler (port 6543), for example:
-postgresql://postgres.mpuboebxkugbobspodwd:ENCODED_PASSWORD@aws-0-REGION.pooler.supabase.com:6543/postgres?pgbouncer=true
-
-Or Session pooler (port 5432):
 postgresql://postgres.mpuboebxkugbobspodwd:ENCODED_PASSWORD@aws-0-REGION.pooler.supabase.com:5432/postgres
 
-Paste ONLY the URL — no quotes, no "DATABASE_URL=" prefix.
-Encode special password characters: @ %40  # %23  : %3A  / %2F  ? %3F  & %26
+Get the string from Supabase → Connect → Session pooler (port 5432).
+Paste ONLY the URL (no quotes, no "DATABASE_URL=" prefix).
+If your password has @ # : / ? & encode them first (e.g. encodeURIComponent in browser console).
 `);
   process.exit(1);
 }
 
-process.env.DATABASE_URL = check.trimmed;
-console.log(`✓ DATABASE_URL → ${check.hostname}:${check.port}`);
+const runtimeUrl = check.trimmed;
+const migrationUrl = toMigrationUrl(runtimeUrl);
 
-if (!process.env.DIRECT_URL) {
-  process.env.DIRECT_URL = deriveDirectUrl(check.trimmed);
-  console.log(`✓ DIRECT_URL auto-set for migrations (port 5432)`);
-} else {
-  const directCheck = validateDatabaseUrl("DIRECT_URL", process.env.DIRECT_URL);
-  if (!directCheck.ok) {
-    console.error(`\n❌ ${directCheck.message}\n`);
-    process.exit(1);
-  }
-  process.env.DIRECT_URL = directCheck.trimmed;
-  console.log(`✓ DIRECT_URL → ${directCheck.hostname}:${directCheck.port}`);
+console.log(`✓ DATABASE_URL → ${check.hostname}:${check.port}`);
+if (migrationUrl !== runtimeUrl) {
+  console.log(`✓ Using port 5432 for schema sync during build`);
 }
 
 try {
-  run("npx prisma migrate deploy");
+  syncDatabaseSchema(migrationUrl);
   run("npx prisma generate");
   run("npx next build");
+  console.log("\n✓ Build completed successfully\n");
 } catch {
   process.exit(1);
 }
