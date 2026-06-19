@@ -86,7 +86,7 @@ export async function loginAction(
   }
 
   const destination =
-    next === "/login" || next === "/signup" || next === "/onboarding"
+    next === "/" || next === "/login" || next === "/signup" || next === "/onboarding"
       ? ROLE_HOME[role]
       : next;
 
@@ -130,7 +130,7 @@ export async function signupAction(
 
 export async function demoLoginAction(): Promise<void> {
   if (!isDemoBypassEnabled()) {
-    redirect("/login?error=demo");
+    redirect("/?mode=login&error=demo");
   }
 
   const user = await prisma.user.findUnique({
@@ -139,7 +139,7 @@ export async function demoLoginAction(): Promise<void> {
   });
 
   if (!user) {
-    redirect("/login?error=demo-data");
+    redirect("/?mode=login&error=demo-data");
   }
 
   await setDemoSession(user.id);

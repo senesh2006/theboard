@@ -7,13 +7,13 @@ export async function GET(request: Request) {
   const next = searchParams.get("next") ?? "/onboarding";
 
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-    return NextResponse.redirect(`${origin}/login?error=config`);
+    return NextResponse.redirect(`${origin}/?mode=login&error=config`);
   }
 
   try {
     getSupabasePublishableKey();
   } catch {
-    return NextResponse.redirect(`${origin}/login?error=config`);
+    return NextResponse.redirect(`${origin}/?mode=login&error=config`);
   }
 
   const code = searchParams.get("code");
@@ -25,5 +25,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth`);
+  return NextResponse.redirect(`${origin}/?mode=login&error=auth`);
 }

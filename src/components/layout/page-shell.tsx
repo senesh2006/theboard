@@ -10,11 +10,11 @@ export function PageShell({ title, description, children, actions }: PageShellPr
     <div className="mx-auto max-w-6xl px-4 py-8">
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-100 sm:text-3xl">
             {title}
           </h1>
           {description ? (
-            <p className="mt-2 max-w-2xl text-sm text-slate-600 sm:text-base">
+            <p className="mt-2 max-w-2xl text-sm text-slate-400 sm:text-base">
               {description}
             </p>
           ) : null}

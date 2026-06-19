@@ -101,12 +101,12 @@ export async function Nav() {
             ) : (
               <>
                 <Link
-                  href="/login"
+                  href="/?mode=login"
                   className="text-sm font-medium text-slate-300 hover:text-indigo-300"
                 >
                   Log in
                 </Link>
-                <Button href="/signup" size="sm">
+                <Button href="/?mode=signup" size="sm">
                   Sign up
                 </Button>
               </>

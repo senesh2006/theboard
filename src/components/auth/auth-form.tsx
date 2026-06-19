@@ -19,6 +19,7 @@ type AuthFormProps = {
   mode: "login" | "signup";
   next?: string;
   bannerError?: string | null;
+  showModeToggle?: boolean;
 };
 
 const initialState: AuthActionState = {};
@@ -32,7 +33,12 @@ function SubmitButton({ label, loadingLabel }: { label: string; loadingLabel: st
   );
 }
 
-export function AuthForm({ mode, next = "/", bannerError }: AuthFormProps) {
+export function AuthForm({
+  mode,
+  next = "/",
+  bannerError,
+  showModeToggle = true,
+}: AuthFormProps) {
   const action = mode === "login" ? loginAction : signupAction;
   const [state, formAction] = useFormState(action, initialState);
   const [oauthError, setOauthError] = useState<string | null>(null);
@@ -73,8 +79,8 @@ export function AuthForm({ mode, next = "/", bannerError }: AuthFormProps) {
           />
         </div>
 
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
-        {message ? <p className="text-sm text-emerald-700">{message}</p> : null}
+        {error ? <p className="text-sm text-red-400">{error}</p> : null}
+        {message ? <p className="text-sm text-emerald-400">{message}</p> : null}
 
         <SubmitButton
           label={mode === "login" ? "Log in" : "Create account"}
@@ -91,32 +97,34 @@ export function AuthForm({ mode, next = "/", bannerError }: AuthFormProps) {
       ) : null}
 
       <div className="my-4 flex items-center gap-3">
-        <div className="h-px flex-1 bg-slate-200" />
+        <div className="h-px flex-1 bg-white/10" />
         <span className="text-xs text-slate-500">or</span>
-        <div className="h-px flex-1 bg-slate-200" />
+        <div className="h-px flex-1 bg-white/10" />
       </div>
 
       <Button type="button" variant="secondary" className="w-full" onClick={handleGoogle}>
         Continue with Google
       </Button>
 
-      <p className="mt-4 text-center text-sm text-slate-600">
-        {mode === "login" ? (
-          <>
-            No account?{" "}
-            <Link href="/signup" className="font-medium text-indigo-600 hover:underline">
-              Sign up
-            </Link>
-          </>
-        ) : (
-          <>
-            Already have an account?{" "}
-            <Link href="/login" className="font-medium text-indigo-600 hover:underline">
-              Log in
-            </Link>
-          </>
-        )}
-      </p>
+      {showModeToggle ? (
+        <p className="mt-4 text-center text-sm text-slate-400">
+          {mode === "login" ? (
+            <>
+              No account?{" "}
+              <Link href="/?mode=signup" className="font-medium text-indigo-400 hover:underline">
+                Sign up
+              </Link>
+            </>
+          ) : (
+            <>
+              Already have an account?{" "}
+              <Link href="/?mode=login" className="font-medium text-indigo-400 hover:underline">
+                Log in
+              </Link>
+            </>
+          )}
+        </p>
+      ) : null}
     </Card>
   );
 }

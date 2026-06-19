@@ -49,7 +49,8 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith("/onboarding")) {
     if (!isAuthenticated) {
       const url = request.nextUrl.clone();
-      url.pathname = "/login";
+      url.pathname = "/";
+      url.searchParams.set("mode", "login");
       url.searchParams.set("next", pathname);
       return NextResponse.redirect(url);
     }
@@ -67,13 +68,20 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  if (isAuthenticated && pathname === "/") {
+    const url = request.nextUrl.clone();
+    url.pathname = role ? ROLE_HOME[role] : "/onboarding";
+    return NextResponse.redirect(url);
+  }
+
   if (isPublicPath(pathname)) {
     return supabaseResponse;
   }
 
   if (!isAuthenticated) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    url.pathname = "/";
+    url.searchParams.set("mode", "login");
     url.searchParams.set("next", pathname);
     return NextResponse.redirect(url);
   }
