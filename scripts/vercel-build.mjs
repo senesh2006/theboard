@@ -22,12 +22,88 @@ function normalizeEnvUrl(value) {
   return trimmed;
 }
 
+function parsePostgresUrl(value) {
+  const match = value.match(/^(postgres(?:ql)?:\/\/)(.+)$/i);
+  if (!match) return null;
+
+  const rest = match[2];
+  const at = rest.lastIndexOf("@");
+  if (at <= 0) return null;
+
+  const userInfo = rest.slice(0, at);
+  const hostPath = rest.slice(at + 1);
+  const colon = userInfo.indexOf(":");
+  if (colon <= 0) return null;
+
+  return {
+    protocol: match[1],
+    user: userInfo.slice(0, colon),
+    password: userInfo.slice(colon + 1),
+    hostPath,
+  };
+}
+
+function buildPostgresUrl(parts) {
+  return `${parts.protocol}${parts.user}:${parts.password}@${parts.hostPath}`;
+}
+
+function canParseUrl(value) {
+  try {
+    new URL(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Fix passwords with @ # : etc. that break URL parsing. */
+function fixDatabaseUrl(value) {
+  if (canParseUrl(value)) {
+    return { url: value, fixed: false };
+  }
+
+  const parts = parsePostgresUrl(value);
+  if (!parts) {
+    return { url: value, fixed: false };
+  }
+
+  // Already percent-encoded — don't double-encode.
+  if (/%[0-9A-Fa-f]{2}/.test(parts.password)) {
+    return { url: value, fixed: false };
+  }
+
+  const encoded = buildPostgresUrl({
+    ...parts,
+    password: encodeURIComponent(parts.password),
+  });
+
+  if (canParseUrl(encoded)) {
+    return { url: encoded, fixed: true };
+  }
+
+  return { url: value, fixed: false };
+}
+
+function diagnoseInvalidUrl(value) {
+  const atCount = (value.match(/@/g) ?? []).length;
+  if (atCount > 1) {
+    return "Your password likely contains '@'. Encode it as %40.";
+  }
+  if (value.includes("#")) {
+    return "Your password likely contains '#'. Encode it as %23.";
+  }
+  if (value.includes(" ")) {
+    return "Your URL contains spaces. Remove them or encode as %20.";
+  }
+  return "URL-encode special characters in your password (@ → %40, # → %23, : → %3A).";
+}
+
 function validateDatabaseUrl(name, value) {
   if (!value) {
     return { ok: false, message: `${name} is not set in Vercel environment variables.` };
   }
 
-  const trimmed = normalizeEnvUrl(value);
+  let trimmed = normalizeEnvUrl(value);
   if (!trimmed) {
     return { ok: false, message: `${name} is empty.` };
   }
@@ -36,13 +112,19 @@ function validateDatabaseUrl(name, value) {
     return { ok: false, message: `${name} still contains a password placeholder.` };
   }
 
+  const fixed = fixDatabaseUrl(trimmed);
+  trimmed = fixed.url;
+  if (fixed.fixed) {
+    console.log(`✓ Auto-encoded special characters in ${name} password`);
+  }
+
   let parsed;
   try {
     parsed = new URL(trimmed);
   } catch {
     return {
       ok: false,
-      message: `${name} is not a valid URL. URL-encode special characters in your password (@ → %40, # → %23, : → %3A).`,
+      message: `${name} is not a valid URL. ${diagnoseInvalidUrl(trimmed)}`,
     };
   }
 
