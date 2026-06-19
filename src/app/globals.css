@@ -20,7 +20,10 @@ body {
 
 /* Base layer behind Framer floating animation */
 .liquid-glass-scene {
-  background: linear-gradient(165deg, #020617 0%, #0f172a 45%, #1e1b4b 100%);
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(79, 70, 229, 0.18), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(99, 102, 241, 0.12), transparent 50%),
+    linear-gradient(165deg, #020617 0%, #0f172a 42%, #1e1b4b 100%);
 }
 
 /* Liquid glass — dark mode surfaces */

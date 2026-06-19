@@ -176,7 +176,7 @@ export type FloatingAnimationProps = {
  * ported for Next.js — WebGL gradient waves via ogl.
  */
 export function FloatingAnimation({
-  colorStops = ["#6366f1", "#38bdf8", "#a78bfa"],
+  colorStops = ["#1e1b4b", "#4338ca", "#6366f1"],
   amplitude = 1,
   blend = 0.5,
   speed = 1,

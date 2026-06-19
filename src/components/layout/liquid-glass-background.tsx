@@ -7,12 +7,12 @@ export function LiquidGlassBackground() {
       className="liquid-glass-scene pointer-events-none fixed inset-0 -z-10 overflow-hidden"
     >
       <FloatingAnimation
-        className="h-full w-full"
+        className="h-full w-full opacity-90"
         height="100%"
-        colorStops={["#FF2638", "#7cff67", "#5227FF"]}
-        amplitude={1}
-        blend={0.5}
-        speed={1}
+        colorStops={["#1e1b4b", "#4338ca", "#6366f1"]}
+        amplitude={0.85}
+        blend={0.55}
+        speed={0.75}
       />
     </div>
   );
