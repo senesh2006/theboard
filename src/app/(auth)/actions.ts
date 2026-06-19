@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { Role } from "@prisma/client";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthCallbackUrl } from "@/lib/supabase/app-url";
 import { prisma } from "@/lib/db";
 import { ROLE_HOME } from "@/lib/auth/roles";
 
@@ -40,6 +41,12 @@ export async function loginAction(
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
+    if (error.message.toLowerCase().includes("email not confirmed")) {
+      return {
+        error:
+          "Confirm your email first (check spam). Log in does not send a new email — use the link from signup, or sign up again after disabling confirm email in Supabase.",
+      };
+    }
     return { error: error.message };
   }
 
@@ -93,7 +100,13 @@ export async function signupAction(
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: getAuthCallbackUrl("/onboarding"),
+    },
+  });
 
   if (error) {
     return { error: error.message };
@@ -102,7 +115,7 @@ export async function signupAction(
   if (!data.session) {
     return {
       message:
-        "Account created. Check your email and confirm your address, then log in.",
+        "Account created. Check your inbox (and spam) for a confirmation link, then log in. Email/password login does not send a new email.",
     };
   }
 
