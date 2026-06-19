@@ -2,16 +2,14 @@
 
 /**
  * Vercel build: validate DATABASE_URL, sync schema, build Next.js.
- * Runtime uses transaction pooler (6543); migrations use direct Postgres host.
+ * Auto-converts Supabase direct URLs (db.*) to session pooler for Vercel.
  */
 
 import { execSync } from "node:child_process";
 import {
-  isPoolExhaustedError,
   normalizeEnvUrl,
   resolveDatabaseUrl,
-  toDirectMigrationUrl,
-  toRuntimeUrl,
+  toMigrationUrl,
 } from "./lib/database-url.mjs";
 
 function diagnoseInvalidUrl(value) {
@@ -93,29 +91,14 @@ function run(command, env = process.env) {
   execSync(command, { stdio: "inherit", env });
 }
 
-function syncDatabaseSchema(migrationUrl, directUrl) {
-  const env = {
-    ...process.env,
-    DATABASE_URL: migrationUrl,
-    DIRECT_URL: directUrl,
-  };
+function syncDatabaseSchema(migrationUrl) {
+  const env = { ...process.env, DATABASE_URL: migrationUrl };
 
   try {
     run("npx prisma migrate deploy", env);
     console.log("✓ prisma migrate deploy succeeded");
     return;
   } catch (error) {
-    if (isPoolExhaustedError(error)) {
-      console.error("\n❌ Database pool exhausted during migration.\n");
-      console.error(
-        "Set DIRECT_URL in Vercel to Supabase → Connect → Direct connection (db.*.supabase.co:5432).",
-      );
-      console.error(
-        "Or pause other apps using the same database and redeploy.",
-      );
-      throw error;
-    }
-
     console.warn("\n⚠ prisma migrate deploy failed — trying prisma db push...\n");
     if (error instanceof Error && error.message) {
       console.warn(error.message);
@@ -127,19 +110,16 @@ function syncDatabaseSchema(migrationUrl, directUrl) {
     console.log("✓ prisma db push succeeded");
   } catch (error) {
     console.error("\n❌ Could not sync database schema.\n");
-    console.error("P1001 = cannot reach database — check host and password.");
+    console.error("P1001 = cannot reach database — check pooler host and password.");
     console.error("P1000 = wrong password or username.");
     console.error("");
-    console.error("Recommended Vercel env vars:");
-    console.error("");
-    console.error("DATABASE_URL (transaction pooler, port 6543):");
+    console.error("Preferred DATABASE_URL on Vercel (Session pooler, port 5432):");
     console.error(
-      "postgresql://postgres.mpuboebxkugbobspodwd:YOUR_PASSWORD@aws-1-ap-southeast-2.pooler.supabase.com:6543/postgres?pgbouncer=true",
+      "postgresql://postgres.mpuboebxkugbobspodwd:YOUR_PASSWORD@aws-1-ap-southeast-2.pooler.supabase.com:5432/postgres",
     );
     console.error("");
-    console.error("DIRECT_URL (direct host for migrations, port 5432):");
     console.error(
-      "postgresql://postgres:YOUR_PASSWORD@db.mpuboebxkugbobspodwd.supabase.co:5432/postgres",
+      "Direct db.*.supabase.co URLs are auto-converted at build/runtime. If sync still fails, paste the pooler URL from Supabase → Connect.",
     );
     throw error;
   }
@@ -158,33 +138,32 @@ if (!check.ok) {
   console.error(`\n❌ ${check.message}\n`);
   console.error(`In Vercel → Settings → Environment Variables, set DATABASE_URL for Production.
 
-Use Supabase → Connect → Transaction pooler (port 6543):
+Use Supabase → Connect → Session pooler:
 
-postgresql://postgres.mpuboebxkugbobspodwd:YOUR_PASSWORD@aws-1-ap-southeast-2.pooler.supabase.com:6543/postgres?pgbouncer=true
+postgresql://postgres.mpuboebxkugbobspodwd:YOUR_PASSWORD@aws-1-ap-southeast-2.pooler.supabase.com:5432/postgres
 
-Optional DIRECT_URL for migrations (Direct connection):
-
-postgresql://postgres:YOUR_PASSWORD@db.mpuboebxkugbobspodwd.supabase.co:5432/postgres
+Paste ONLY the URL (no quotes). Direct db.* URLs are auto-converted if your pooler region matches.
 `);
   process.exit(1);
 }
 
-const runtimeUrl = toRuntimeUrl(check.trimmed);
-const directUrl = toDirectMigrationUrl(check.trimmed);
+const runtimeUrl = check.trimmed;
+const migrationUrl = toMigrationUrl(runtimeUrl);
 
 process.env.DATABASE_URL = runtimeUrl;
-process.env.DIRECT_URL = directUrl;
 
-console.log(`✓ Runtime DATABASE_URL → transaction pooler (port 6543)`);
-console.log(`✓ Migration DIRECT_URL → ${new URL(directUrl).hostname}:${new URL(directUrl).port || "5432"}`);
+console.log(`✓ DATABASE_URL → ${check.username}@${check.hostname}:${check.port}`);
+if (migrationUrl !== runtimeUrl) {
+  console.log("✓ Using port 5432 for schema sync during build");
+}
 
 try {
-  syncDatabaseSchema(directUrl, directUrl);
+  syncDatabaseSchema(migrationUrl);
   run("npx prisma generate");
 
   if (process.env.SEED_DEMO_DATA === "true") {
     console.log("\n▶ Seeding demo listings and bypass student…\n");
-    run("node scripts/seed.mjs", { ...process.env, DATABASE_URL: runtimeUrl });
+    run("node scripts/seed.mjs");
   }
 
   run("npx next build");

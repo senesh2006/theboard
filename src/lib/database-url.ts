@@ -176,11 +176,8 @@ export function resolveDatabaseUrl(raw: string | undefined, env: Env = process.e
 }
 
 export function getResolvedDatabaseUrl(): string | undefined {
-  const raw = process.env.DATABASE_URL;
-  if (!raw) return undefined;
-  const { url } = resolveDatabaseUrl(raw);
-  if (!url) return undefined;
-  return toRuntimeUrl(url);
+  const { url } = resolveDatabaseUrl(process.env.DATABASE_URL);
+  return url || undefined;
 }
 
 export function toMigrationUrl(databaseUrl: string): string {
@@ -190,58 +187,4 @@ export function toMigrationUrl(databaseUrl: string): string {
     .replace(/\?pgbouncer=true&?/, "?")
     .replace(/&pgbouncer=true/, "")
     .replace(/\?$/, "");
-}
-
-export function toRuntimeUrl(databaseUrl: string, env: Env = process.env): string {
-  const { url } = resolveDatabaseUrl(databaseUrl, env);
-  let runtime = url
-    .replace(":5432/", ":6543/")
-    .replace(":5432?", ":6543?");
-
-  try {
-    const parsed = new URL(runtime);
-    parsed.searchParams.set("pgbouncer", "true");
-    parsed.searchParams.set("connection_limit", "1");
-    return parsed.toString();
-  } catch {
-    const joiner = runtime.includes("?") ? "&" : "?";
-    return `${runtime}${joiner}pgbouncer=true&connection_limit=1`;
-  }
-}
-
-function withMigrationParams(url: string): string {
-  try {
-    const parsed = new URL(url);
-    parsed.searchParams.set("connection_limit", "1");
-    parsed.searchParams.set("connect_timeout", "30");
-    return parsed.toString();
-  } catch {
-    return url;
-  }
-}
-
-export function toDirectMigrationUrl(databaseUrl: string, env: Env = process.env): string {
-  if (env.DIRECT_URL) {
-    return withMigrationParams(resolveDatabaseUrl(env.DIRECT_URL, env).url);
-  }
-
-  const { url } = resolveDatabaseUrl(databaseUrl, env);
-  const parts = parsePostgresUrl(url);
-  if (!parts) return withMigrationParams(url);
-
-  const projectRef = getSupabaseProjectRef(env);
-
-  if (/db\.[^.]+\.supabase\.co/i.test(parts.hostPath)) {
-    const user = parts.user.startsWith("postgres.") ? "postgres" : parts.user;
-    return withMigrationParams(buildPostgresUrl({ ...parts, user }));
-  }
-
-  const direct = buildPostgresUrl({
-    protocol: parts.protocol,
-    user: "postgres",
-    password: parts.password,
-    hostPath: `db.${projectRef}.supabase.co:5432/postgres`,
-  });
-
-  return withMigrationParams(direct);
 }
