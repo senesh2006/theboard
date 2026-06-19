@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Role } from "@prisma/client";
 import { getSessionUser } from "@/lib/auth/session";
@@ -16,9 +15,9 @@ export default async function PosterProfilePage() {
       title="Your profile"
       description="Update your contact details shown to applicants."
       actions={
-        <Link href="/poster/dashboard">
-          <Button variant="secondary">Back to dashboard</Button>
-        </Link>
+        <Button href="/poster/dashboard" variant="secondary">
+          Back to dashboard
+        </Button>
       }
     >
       <ProfileForm

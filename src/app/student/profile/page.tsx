@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Role } from "@prisma/client";
 import { getSessionUser } from "@/lib/auth/session";
@@ -33,12 +32,12 @@ export default async function StudentProfilePage() {
       description="Keep your profile updated and build a CV the Job Agent can review when you apply."
       actions={
         <div className="flex flex-wrap gap-2">
-          <Link href="/student/agent">
-            <Button variant="secondary">Job Agent</Button>
-          </Link>
-          <Link href="/student/dashboard">
-            <Button variant="secondary">Dashboard</Button>
-          </Link>
+          <Button href="/student/agent" variant="secondary">
+            Job Agent
+          </Button>
+          <Button href="/student/dashboard" variant="secondary">
+            Dashboard
+          </Button>
         </div>
       }
     >

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Role } from "@prisma/client";
 import { getSessionUser } from "@/lib/auth/session";
@@ -47,9 +46,9 @@ export default async function ListingApplicantsPage({ params }: ApplicantsPagePr
       title="Applicants"
       description={listing.title}
       actions={
-        <Link href="/poster/dashboard">
-          <Button variant="secondary">Back to dashboard</Button>
-        </Link>
+        <Button href="/poster/dashboard" variant="secondary">
+          Back to dashboard
+        </Button>
       }
     >
       <Card>

@@ -104,14 +104,16 @@ export function JobFinderAgent({ listings }: JobFinderAgentProps) {
           <ul className="mt-3 space-y-2">
             {AGENT_STARTER_PROMPTS.map((prompt) => (
               <li key={prompt}>
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="w-full"
                   disabled={chat.busy}
                   onClick={() => void chat.sendMessage(prompt)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:border-indigo-300 hover:bg-indigo-50 disabled:opacity-50"
                 >
                   {prompt}
-                </button>
+                </Button>
               </li>
             ))}
           </ul>

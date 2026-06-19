@@ -41,9 +41,7 @@ export default async function PosterDashboardPage() {
       title="Poster dashboard"
       description="Manage listings and review applicants."
       actions={
-        <Link href="/listings/new">
-          <Button>Post a role</Button>
-        </Link>
+        <Button href="/listings/new">Post a role</Button>
       }
     >
       <Card>
@@ -80,11 +78,13 @@ export default async function PosterDashboardPage() {
                     {listing.status}
                   </Badge>
                   {listing._count.applications > 0 ? (
-                    <Link href={`/poster/listings/${listing.id}/applicants`}>
-                      <Button size="sm" variant="secondary">
-                        View applicants
-                      </Button>
-                    </Link>
+                    <Button
+                      href={`/poster/listings/${listing.id}/applicants`}
+                      size="sm"
+                      variant="secondary"
+                    >
+                      View applicants
+                    </Button>
                   ) : (
                     <span className="text-xs text-slate-400">No applicants yet</span>
                   )}

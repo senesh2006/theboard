@@ -73,9 +73,9 @@ export default async function ListingDetailPage({ params }: ListingDetailPagePro
     <PageShell
       title={listing.title}
       actions={
-        <Link href="/listings">
-          <Button variant="secondary">Back to browse</Button>
-        </Link>
+        <Button href="/listings" variant="secondary">
+          Back to browse
+        </Button>
       }
     >
       <div className="grid gap-6 lg:grid-cols-3">
@@ -165,9 +165,9 @@ export default async function ListingDetailPage({ params }: ListingDetailPagePro
               </p>
             ) : (
               <div className="mt-3">
-                <Link href={`/login?next=/listings/${listing.id}`}>
-                  <Button className="w-full">Log in to apply</Button>
-                </Link>
+                <Button href={`/login?next=/listings/${listing.id}`} className="w-full">
+                  Log in to apply
+                </Button>
               </div>
             )}
           </Card>

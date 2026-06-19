@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -17,15 +16,13 @@ export default function HomePage() {
             Browse roles filtered by district, remote work, part-time hours, and skills.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Link href="/listings">
-              <Button>Browse listings</Button>
-            </Link>
-            <Link href="/login">
-              <Button variant="secondary">Try demo</Button>
-            </Link>
-            <Link href="/signup">
-              <Button variant="secondary">Sign up</Button>
-            </Link>
+            <Button href="/listings">Browse listings</Button>
+            <Button href="/login" variant="secondary">
+              Try demo
+            </Button>
+            <Button href="/signup" variant="secondary">
+              Sign up
+            </Button>
           </div>
         </Card>
         <Card className="flex flex-col" interactive>
@@ -34,12 +31,10 @@ export default function HomePage() {
             Publish internships and gigs to reach students with matching skills and location.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Link href="/signup">
-              <Button>Get started</Button>
-            </Link>
-            <Link href="/login">
-              <Button variant="secondary">Log in</Button>
-            </Link>
+            <Button href="/signup">Get started</Button>
+            <Button href="/login" variant="secondary">
+              Log in
+            </Button>
           </div>
         </Card>
       </LiquidGlassContainerView>

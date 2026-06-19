@@ -51,12 +51,10 @@ export default async function StudentDashboardPage() {
       description="Track your applications and browse new opportunities."
       actions={
         <>
-          <Link href="/student/agent">
-            <Button variant="secondary">Job Agent</Button>
-          </Link>
-          <Link href="/listings">
-            <Button>Browse listings</Button>
-          </Link>
+          <Button href="/student/agent" variant="secondary">
+            Job Agent
+          </Button>
+          <Button href="/listings">Browse listings</Button>
         </>
       }
     >
@@ -69,11 +67,9 @@ export default async function StudentDashboardPage() {
               {user.skills.length > 0 ? user.skills.join(", ") : "None yet"}
             </p>
           </div>
-          <Link href="/student/profile">
-            <Button variant="secondary" size="sm">
-              Edit profile
-            </Button>
-          </Link>
+          <Button href="/student/profile" variant="secondary" size="sm">
+            Edit profile
+          </Button>
         </div>
       </Card>
 

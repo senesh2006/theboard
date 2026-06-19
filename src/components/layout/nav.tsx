@@ -6,6 +6,7 @@ import { tryCreateClient } from "@/lib/supabase/server";
 import { clearDemoSession } from "@/lib/auth/demo-session";
 import { redirect } from "next/navigation";
 import { LiquidGlassView } from "@/components/ui/liquid-glass";
+import { Button } from "@/components/ui/button";
 
 async function signOut() {
   "use server";
@@ -78,12 +79,9 @@ export async function Nav() {
                   Profile
                 </Link>
                 <form action={signOut}>
-                  <button
-                    type="submit"
-                    className="text-sm font-medium text-slate-400 hover:text-slate-200"
-                  >
+                  <Button type="submit" variant="ghost" size="sm">
                     Sign out
-                  </button>
+                  </Button>
                 </form>
               </>
             ) : authUser ? (
@@ -95,12 +93,9 @@ export async function Nav() {
                   Complete setup
                 </Link>
                 <form action={signOut}>
-                  <button
-                    type="submit"
-                    className="text-sm font-medium text-slate-400 hover:text-slate-200"
-                  >
+                  <Button type="submit" variant="ghost" size="sm">
                     Sign out
-                  </button>
+                  </Button>
                 </form>
               </>
             ) : (
@@ -111,12 +106,9 @@ export async function Nav() {
                 >
                   Log in
                 </Link>
-                <Link
-                  href="/signup"
-                  className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
-                >
+                <Button href="/signup" size="sm">
                   Sign up
-                </Link>
+                </Button>
               </>
             )}
           </nav>

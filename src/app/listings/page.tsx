@@ -1,5 +1,4 @@
 import { Suspense } from "react";
-import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { withDatabase } from "@/lib/db/errors";
 import { buildListingWhere } from "@/lib/listings/queries";
@@ -96,21 +95,17 @@ export default async function ListingsPage({ searchParams }: ListingsPageProps) 
       {totalPages > 1 ? (
         <div className="mt-8 flex items-center justify-center gap-3">
           {page > 1 ? (
-            <Link href={pageHref(page - 1)}>
-              <Button variant="secondary" size="sm">
-                Previous
-              </Button>
-            </Link>
+            <Button href={pageHref(page - 1)} variant="secondary" size="sm">
+              Previous
+            </Button>
           ) : null}
           <span className="text-sm text-slate-600">
             Page {page} of {totalPages}
           </span>
           {page < totalPages ? (
-            <Link href={pageHref(page + 1)}>
-              <Button variant="secondary" size="sm">
-                Next
-              </Button>
-            </Link>
+            <Button href={pageHref(page + 1)} variant="secondary" size="sm">
+              Next
+            </Button>
           ) : null}
         </div>
       ) : null}

@@ -1,7 +1,6 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -16,21 +15,6 @@ import {
 type FloatingAgentAssistantProps = {
   listings: JobOption[];
 };
-
-function ChatIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      aria-hidden
-    >
-      <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
-    </svg>
-  );
-}
 
 export function FloatingAgentAssistant({ listings }: FloatingAgentAssistantProps) {
   const pathname = usePathname();
@@ -61,22 +45,18 @@ export function FloatingAgentAssistant({ listings }: FloatingAgentAssistantProps
               <p className="text-xs text-indigo-100">Search jobs & CV advice</p>
             </div>
             <div className="flex items-center gap-1">
-              <Link
-                href="/student/agent"
-                className="rounded-md px-2 py-1 text-xs font-medium text-indigo-100 hover:bg-indigo-500/40"
-              >
+              <Button href="/student/agent" variant="ghost" size="sm">
                 Expand
-              </Link>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => setOpen(false)}
-                className="rounded-md p-1.5 hover:bg-indigo-500/40"
                 aria-label="Close assistant"
               >
-                <svg viewBox="0 0 24 24" className="h-4 w-4" stroke="currentColor" strokeWidth="2" fill="none">
-                  <path d="M6 6l12 12M18 6 6 18" />
-                </svg>
-              </button>
+                Close
+              </Button>
             </div>
           </LiquidGlassView>
 
@@ -143,43 +123,32 @@ export function FloatingAgentAssistant({ listings }: FloatingAgentAssistantProps
             </form>
             <div className="mt-2 flex flex-wrap gap-1">
               {AGENT_STARTER_PROMPTS.slice(0, 2).map((prompt) => (
-                <button
+                <Button
                   key={prompt}
                   type="button"
+                  variant="secondary"
+                  size="sm"
                   disabled={chat.busy}
                   onClick={() => void chat.sendMessage(prompt)}
-                  className="rounded-full border border-slate-200 px-2 py-0.5 text-[10px] text-slate-600 hover:border-indigo-300 hover:bg-indigo-50 disabled:opacity-50"
                 >
                   {prompt}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
         </LiquidGlassView>
       ) : null}
 
-      <LiquidGlassView
-        effect="regular"
-        interactive
-        tintColor="rgba(79, 70, 229, 0.85)"
-        className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg focus-within:ring-2 focus-within:ring-indigo-400 focus-within:ring-offset-2"
-      >
-      <button
+      <Button
         type="button"
+        variant="primary"
+        className="pointer-events-auto h-14 w-14 min-h-0 rounded-full p-0"
         onClick={() => setOpen((value) => !value)}
-        className="flex h-full w-full items-center justify-center rounded-full focus:outline-none"
         aria-label={open ? "Close job assistant" : "Open job assistant"}
         aria-expanded={open}
       >
-        {open ? (
-          <svg viewBox="0 0 24 24" className="h-6 w-6" stroke="currentColor" strokeWidth="2" fill="none">
-            <path d="M6 6l12 12M18 6 6 18" />
-          </svg>
-        ) : (
-          <ChatIcon className="h-6 w-6" />
-        )}
-      </button>
-      </LiquidGlassView>
+        {open ? "Close" : "Chat"}
+      </Button>
     </div>
   );
 }
