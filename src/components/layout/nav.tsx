@@ -117,7 +117,16 @@ export async function Nav() {
       </header>
     );
   } catch (error) {
-    console.error("Nav render failed:", error);
+    const message = error instanceof Error ? error.message : "";
+    const isExpectedDynamicUsage =
+      message.includes("Dynamic server usage") ||
+      (error instanceof Error &&
+        "digest" in error &&
+        (error as Error & { digest?: string }).digest === "DYNAMIC_SERVER_USAGE");
+
+    if (!isExpectedDynamicUsage) {
+      console.error("Nav render failed:", error);
+    }
     return (
       <header className="sticky top-0 z-40">
         <LiquidGlassView effect="regular" className="border-b border-white/10">

@@ -16,6 +16,9 @@ export const metadata: Metadata = {
   description: "Find internships and gigs without digging through group chats.",
 };
 
+/** Auth in Nav/StudentFloatingAgent reads cookies — opt out of static prerender. */
+export const dynamic = "force-dynamic";
+
 export default function RootLayout({
   children,
 }: Readonly<{
