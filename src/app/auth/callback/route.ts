@@ -1,11 +1,18 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getSupabasePublishableKey } from "@/lib/supabase/config";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const next = searchParams.get("next") ?? "/onboarding";
 
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    return NextResponse.redirect(`${origin}/login?error=config`);
+  }
+
+  try {
+    getSupabasePublishableKey();
+  } catch {
     return NextResponse.redirect(`${origin}/login?error=config`);
   }
 
